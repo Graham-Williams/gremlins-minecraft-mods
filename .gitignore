@@ -3,8 +3,18 @@ dist/
 build/
 *.zip
 
+# Gradle
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+
+# Fabric Loom dev-run directory
+run/
+
 # OS / editor
 .DS_Store
 *.swp
 .idea/
 .vscode/
+*.iml

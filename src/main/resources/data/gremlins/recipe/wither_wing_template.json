@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "gremlins:withers_crown",
+    "minecraft:phantom_membrane"
+  ],
+  "result": {
+    "id": "gremlins:wither_wing_template"
+  }
+}

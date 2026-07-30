@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:smithing_transform",
+  "template": "gremlins:wither_wing_template",
+  "base": "minecraft:netherite_chestplate",
+  "addition": "minecraft:elytra",
+  "result": {
+    "id": "minecraft:netherite_chestplate",
+    "components": {
+      "minecraft:glider": {},
+      "minecraft:custom_name": "Wither Wings",
+      "minecraft:custom_data": {
+        "wither_wings": true
+      }
+    }
+  }
+}

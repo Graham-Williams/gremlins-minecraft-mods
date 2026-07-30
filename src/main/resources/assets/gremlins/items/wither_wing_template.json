@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "gremlins:item/wither_wing_template"
+  }
+}

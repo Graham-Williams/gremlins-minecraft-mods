@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "gremlins",
+  "version": "${version}",
+  "name": "Gremlins Minecraft Mods",
+  "description": "An umbrella collection of Fabric gameplay modules. First module: Wither Wings.",
+  "authors": [
+    "Graham Williams"
+  ],
+  "contact": {
+    "homepage": "https://github.com/Graham-Williams/gremlins-minecraft-mods",
+    "sources": "https://github.com/Graham-Williams/gremlins-minecraft-mods"
+  },
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.grahamwilliams.gremlins.Gremlins"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~26.1",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}
