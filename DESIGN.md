@@ -1,60 +1,98 @@
-# Warden's Wings — Design Spec (working draft)
+# Gremlins Minecraft Mods — Design
 
-> **Status: DESIGN PHASE.** This spec is provisional. It gets finalized from the
-> answers to the design questionnaire before any datapack code is written.
->
-> **Questionnaire (fill this out first):**
-> https://docs.google.com/document/d/1TeOZeDG0EbZIEAzj1WBkkF7eXXxRHl0dt830ISoOszE/edit
+## What this is
 
-## Goal
+A single Fabric mod (`gremlins`) that bundles several independent gameplay modules.
+Java/Fabric only — **no Bedrock**. Each module lives in its own sub-package under
+`com.grahamwilliams.gremlins` and is wired up from `Gremlins#onInitialize()`.
 
-One item — **Warden's Wings** — that combines a Netherite Chestplate and an Elytra
-(netherite-tier armor + gliding), earnable only by completing a hard end-game gauntlet.
+## Toolchain notes (Minecraft 26.1+)
 
-## Provisional design (pending questionnaire)
+Minecraft 26.1 was the **first unobfuscated** release. Consequences for this repo:
 
-**The gauntlet (candidate trophies, each forcing distinct content):**
+- Fabric no longer publishes Yarn or Mojang mappings for 26.1+. We use the
+  **non-remapping** Loom plugin `net.fabricmc.fabric-loom` (**not** the legacy
+  `fabric-loom` remapping plugin). There is **no `mappings` line** in `build.gradle`,
+  and Minecraft/mod deps are plain `implementation` (not `modImplementation`).
+- All code uses **Mojang's official names**. A few names differ from the old community
+  mappings — notably `ResourceLocation` is now **`net.minecraft.resources.Identifier`**.
+- **Java 25** is required (Loom enforces it; the version JSON declares
+  `javaVersion.majorVersion = 25`). The Gremlins Modrinth profile bundles a Zulu 25
+  runtime for playing; the build needs a full **JDK 25** (`brew install openjdk@25`).
+- Loom **1.17.17**, Gradle **9.5.0** (Loom 1.17 requires the Gradle 9.5 plugin API).
 
-| Trophy | Forces |
-|---|---|
-| Elytra | End City + Ship (the base, consumed at the final step) |
-| Warden kill → special relic | Deep Dark / Ancient City (signature challenge) |
-| Heavy Core | Ominous Trial Chamber vault |
-| Totem of Undying | Woodland Mansion (Evoker) |
-| Sponge | Ocean Monument |
-| Nether Star | The Wither (fortress skulls, deep Nether) |
-| Netherite Block | Ancient-debris grind |
-| Dragon Head | A rare End City ship |
+Pinned versions live in `gradle.properties`.
 
-**The combine (two-stage forge):**
-1. Craft the trophies together into a **Warden's Core** (3×3 crafting; needing all of
-   them at once is what enforces the full tour).
-2. Smithing table: **Netherite Chestplate + Elytra + Warden's Core → Warden's Wings.**
+## Module: Wither Wings
 
-**Item behavior:** netherite armor values + elytra flight via the `minecraft:glider`
-component; epic rarity + name; enchantable like a chestplate. Extra perks TBD.
+**Goal:** one item — **Wither Wings** — a netherite chestplate that also glides,
+earned by beating the Wither.
 
-**Progress tracking:** flavor advancements per trophy so players can see how close
-they are. TBD per questionnaire.
+### Items (registered in Java)
 
-## Open decisions (resolved by the questionnaire)
+| Item | ID | Role |
+|---|---|---|
+| Wither's Crown | `gremlins:withers_crown` | Trophy dropped by the Wither |
+| Wither Wing Template | `gremlins:wither_wing_template` | Smithing template |
 
-- Final naming (item, core, datapack).
-- Which challenges are in, and whether each is proven by *holding an item* vs *killing a boss*
-  (notably: require an actual **Warden kill** vs just an Echo Shard).
-- Whether trophies are consumed; quantities; co-op requirement; total challenge count.
-- The combine mechanic's feel (two-stage forge vs single recipe vs auto-grant).
-- Item powers beyond the baseline; enchant/repair rules.
-- Datapack-only vs bundling a resource pack for the custom look; timeline to the full mod.
-- Modrinth/publishing and server-deployment logistics.
+Both are plain `Item`s with placeholder 16×16 textures/models and `en_us` lang
+entries. (Art is intentionally placeholder.)
 
-## Technical notes (Minecraft 26.1 datapack)
+### Drop-on-kill (Java, cheese-proof)
 
-- The `minecraft:glider` item data component (added 1.21.2) makes a non-elytra item glide
-  when worn in the chest slot — this is what lets a *chestplate* fly. Confirm exact
-  component/recipe syntax against 26.1 at build time.
-- `pack_format` in `pack.mcmeta` must match MC 26.1 — verify the correct number at build time.
-- Bosses with no unique drop (e.g. the Warden) are handled by a kill-triggered advancement
-  that grants a custom relic item usable as a recipe ingredient.
-- Fully custom worn appearance (wings + texture) is a resource-pack / mod concern, not
-  achievable with a server-side datapack alone.
+`WitherWings.init()` registers a Fabric `ServerLivingEntityEvents.AFTER_DEATH`
+listener. On a death it drops **one** Wither's Crown at the Wither's location **only
+if**:
+
+- the dying entity is a `WitherBoss`, **and**
+- `damageSource.getEntity()` is a `ServerPlayer` — i.e. the killing blow is credited to
+  a player (mirrors vanilla kill-credit, so projectile kills count). This deliberately
+  **excludes environmental kills** (lava, suffocation, etc.), so you can't cheese the
+  drop by letting the world kill the Wither.
+
+Dropping as a ground `ItemEntity` (rather than into inventory) means a full inventory
+is a non-issue.
+
+### Recipes (data-driven JSON, `data/gremlins/recipe/`)
+
+1. **Shapeless** (`wither_wing_template.json`): `Wither's Crown + Phantom Membrane`
+   → `Wither Wing Template`.
+2. **Smithing** (`wither_wings.json`, `minecraft:smithing_transform`):
+   - template `gremlins:wither_wing_template`
+   - base `minecraft:netherite_chestplate`
+   - addition `minecraft:elytra`
+   - result: `minecraft:netherite_chestplate` **+ components**
+     `minecraft:glider={}`, `minecraft:custom_name="Wither Wings"`,
+     `minecraft:custom_data={wither_wings:true}`.
+
+**Why vanilla smithing preserves enchants:** `SmithingTransformRecipe#assemble` calls
+`TransmuteRecipe.createWithOriginalComponents(result, base)`, which builds the output
+as `new ItemStack(resultItem, base.getComponentsPatch())` and *then* applies the
+result JSON's declared components on top. So the base chestplate's **enchantments and
+damage/durability carry over**, and the glider component + custom name + custom-data
+flag are layered on. No custom `SmithingRecipe` in Java was needed. The elytra's own
+enchantments are consumed — expected.
+
+### Durability & flight are native
+
+The `minecraft:glider` component (added in 1.21.2) gives the chestplate elytra-style
+gliding: it drains 1 durability/sec while gliding and refuses to glide at
+`damage >= maxDamage - 1`, so gliding can never fully destroy it (survives at 1, like
+an elytra). Armor/combat durability is the normal netherite-chestplate behaviour.
+**No durability code is written or overridden.** Firework rockets boost a
+glider-component chestplate exactly as they boost an elytra (the boost logic keys off
+the glider component / gliding state, not the elytra item).
+
+### One-way
+
+There is intentionally no recipe to split Wither Wings back into a chestplate + elytra.
+
+## Planned future modules
+
+- **Warden safe-zone** (reward likely **"Warden's Eyes"**): a Warden-gated mod that
+  establishes a protected zone. **Needs Java** — it hooks explosion handling to cancel
+  damage inside the zone; not expressible as a datapack.
+- **Shared / team Ender Chest**: a team-wide shared inventory, separate from the normal
+  per-player ender chest.
+
+Both are unstarted; captured here so the intent persists.

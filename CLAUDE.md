@@ -1,61 +1,74 @@
-# CLAUDE.md — Warden's Wings
+# CLAUDE.md — Gremlins Minecraft Mods
 
 Guidance for Claude Code (and any agent) working in this repo.
 
 ## What this is
 
-A Minecraft **datapack** (later a **Fabric mod**) that adds one hard-to-earn item:
-**Warden's Wings** — a netherite chestplate fused with an elytra (armor + flight),
-craftable only after an end-game gauntlet across the game's major structures/bosses.
+`gremlins` — an umbrella **Fabric** mod bundling independent gameplay modules.
+**Java / Fabric only. There is NO Bedrock support** (do not claim any). First shipped
+module: **Wither Wings**.
 
-- **Target game version:** Minecraft **26.1** (Fabric loader on the server side).
-- **Phase 1 — datapack** (current): server-side only, no client install needed to *play*.
-  Uses vanilla item data components (notably `minecraft:glider`, added in 1.21.2) on a
-  named netherite chestplate, plus custom crafting + smithing recipes and flavor
-  advancements. Known limitation: a datapack alone can't give the item a fully custom
-  worn *look* (custom wings/texture) — that needs a resource pack or the mod.
-- **Phase 2 — Fabric mod** (future): a real registered item with its own model/texture,
-  config, and a Modrinth release. Same game design as the datapack; port, don't rewrite.
+- **MC 26.1.2**, Fabric Loader 0.19.3, Fabric API 0.153.0+26.1.2, **Java 25**.
+- Base package `com.grahamwilliams.gremlins`; each feature is a sub-package wired up in
+  `Gremlins#onInitialize()`.
 
-## Current status
+## Toolchain — read before touching the build
 
-**Design phase — no datapack code yet.** The gauntlet, naming, and difficulty are being
-locked via a questionnaire (see `DESIGN.md`) before implementation. Do not scaffold the
-`data/` tree or `pack.mcmeta` until the questionnaire answers are in.
+MC 26.1+ is **unobfuscated**. This repo therefore:
 
-## Layout (planned)
+- Uses the **non-remapping** Loom plugin **`net.fabricmc.fabric-loom`** (v1.17.17), not
+  the legacy `fabric-loom`. **No `mappings` line**; deps are `implementation`, not
+  `modImplementation`.
+- Uses **Mojang official names**. Gotcha: `ResourceLocation` → **`Identifier`**
+  (`net.minecraft.resources.Identifier`). When in doubt about an API/name, decompile:
+  `./gradlew genSources` then read the sources jar under
+  `.gradle/loom-cache/minecraftMaven/.../*-sources.jar`, or `javap -classpath` the
+  merged jar at `~/.gradle/caches/fabric-loom/26.1.2/minecraft-merged.jar`.
+- Requires **JDK 25**. `gradle.properties` sets `org.gradle.java.home` to the
+  brew `openjdk@25` path — update it if your JDK 25 is elsewhere. Do **not** rely on
+  the machine default Java. Gradle wrapper is **9.5.0** (Loom 1.17 needs the 9.5 plugin
+  API); wrapper was generated in a scratch dir and copied in (the wrapper task can't run
+  while the loom plugin is applied).
 
+## Build / run / test
+
+```bash
+./gradlew build       # -> build/libs/gremlins-<version>.jar
+./gradlew runClient   # dev client with the mod loaded
+./gradlew runServer   # dev dedicated server (validates datapack recipe JSON at startup)
+./gradlew genSources  # decompile MC for API inspection
 ```
-pack.mcmeta                 # datapack manifest (pack_format must match MC 26.1 — verify at build time)
-data/wardens_wings/
-  recipe/                   # crafting (Warden's Core) + smithing (final item) recipes
-  advancement/              # flavor "trophy" advancements + progress tracking
-  function/                 # grant/give logic, kill-triggered relic grants (e.g. Warden)
-  loot_table/ or item component defs for the item itself
-DESIGN.md                   # the working design spec + questionnaire link
-```
 
-## How to build / test / deploy
+Install into the Gremlins Modrinth profile: copy `build/libs/gremlins-*.jar` (plus
+`fabric-api-0.153.0+26.1.2`) into that profile's `mods/` folder.
 
-- **Build:** zip the datapack contents (`pack.mcmeta` + `data/`) into `wardens-wings.zip`.
-- **Test (do this before touching a real server):** drop the folder/zip into a throwaway
-  **creative test world's** `datapacks/`, `/reload`, then `/give` the trophies and verify
-  both recipes resolve and the final item actually glides + has netherite armor values.
-- **Deploy:** place the datapack in the target server's `world/datapacks/` and run `/reload`
-  (or restart). Confirm on the server world, not just locally.
-- **Manual verification is required** before considering any change done — actually fly
-  with the item in-game; automated checks are not a substitute.
+## Wither Wings design (summary)
 
-## Git workflow
+`gremlins:withers_crown` (Wither drop) + Phantom Membrane → `gremlins:wither_wing_template`
+→ smith with a Netherite Chestplate + Elytra → a netherite chestplate carrying the
+vanilla `minecraft:glider` component ("Wither Wings").
 
-- Commit/push freely on **feature branches**. `main` is **protected** — changes reach it
-  only through a PR that Graham reviews and merges himself. Never push to `main`, never
-  merge your own PR, never force-push a shared/protected branch.
-- Public repo: **never commit anything sensitive** — no server IPs/hostnames, no host
-  panel credentials, no personal info. Keep server-specific details out of tracked files.
+- **Drop is cheese-proof:** only on a Wither death whose `DamageSource.getEntity()` is a
+  `ServerPlayer` (player-credited kill, projectiles included); environmental kills give
+  nothing. Implemented via `ServerLivingEntityEvents.AFTER_DEATH`.
+- **Enchants/durability preserved:** vanilla `smithing_transform` copies the base item's
+  component patch, then layers the result JSON's components (glider, custom_name,
+  custom_data) on top — so no custom Java recipe is needed. The elytra's enchants are
+  consumed (expected).
+- **Durability/flight are native** to the glider component — write no durability code.
+- One-way (no un-smithing recipe).
+
+Full detail in `DESIGN.md`.
 
 ## Self-maintenance
 
-When you add or change a capability, recipe, dependency, or the build/deploy process,
-**update this file and `DESIGN.md` before the task is done.** These docs are how the next
-agent/session picks up context — if it's not written here, it's lost.
+When you add or change a capability, module, dependency, command, or architectural
+decision, **update this file, `README.md`, and `DESIGN.md`** before considering the
+task done. This is how context persists for the next agent/session in this repo. Keep
+all docs free of anything sensitive (paths under a real home dir are fine; no secrets).
+
+## Git workflow
+
+`main` is protected — only Graham merges, via a PR he reviews. Do real work on feature
+branches (e.g. `feature/wither-wings`); commit/push feature branches freely. Never push
+to `main`.
