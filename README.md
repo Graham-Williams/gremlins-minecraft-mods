@@ -34,6 +34,29 @@ recipe splits it back apart).
 See `DESIGN.md` for the full design and future modules (a Warden-gated safe-zone mod;
 a shared/team Ender Chest).
 
+## The `/gremlins` command
+
+A **smoke test / tracer bullet** for verifying a deploy — it has **zero gameplay
+impact**. Run `/gremlins` and it replies (to you only) with the mod's name, its version
+and the loaded feature modules:
+
+```
+Gremlins v0.1.0 — modules: Wither Wings
+```
+
+Seeing that in chat proves three things at once: the jar is actually loaded **on the
+server**, the version running is the version you think it is, and server→client
+messaging works. Notes:
+
+- **Available to everyone** — no operator/permission requirement, since it is purely
+  informational.
+- The version is read at runtime from the mod's own metadata
+  (`FabricLoader … getMetadata().getVersion()`), never hardcoded, so it can't go stale.
+- Works from the **server console** too, not just from a player.
+
+Registered in `com.grahamwilliams.gremlins.command.GremlinsCommand`. When you add a new
+feature module, add its display name to the `MODULES` list there (a one-line change).
+
 ## Build
 
 Requires **JDK 25** (MC 26.1.2 enforces it). The build points Gradle at a JDK 25 via

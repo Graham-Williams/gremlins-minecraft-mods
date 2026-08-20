@@ -1,5 +1,6 @@
 package com.grahamwilliams.gremlins;
 
+import com.grahamwilliams.gremlins.command.GremlinsCommand;
 import com.grahamwilliams.gremlins.witherwings.WitherWings;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.resources.Identifier;
@@ -27,5 +28,7 @@ public class Gremlins implements ModInitializer {
         LOGGER.info("[Gremlins] initializing");
         // Register the Wither Wings module (items + drop-on-kill behaviour).
         WitherWings.init();
+        // Register /gremlins -- the smoke-test command (no gameplay impact).
+        GremlinsCommand.init();
     }
 }
