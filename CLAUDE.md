@@ -60,6 +60,26 @@ vanilla `minecraft:glider` component ("Wither Wings").
 
 Full detail in `DESIGN.md`.
 
+## `/gremlins` command (smoke test)
+
+`com.grahamwilliams.gremlins.command.GremlinsCommand` — a **tracer bullet** registered via
+Fabric's `CommandRegistrationCallback` (`fabric-command-api-v2`), wired up from
+`Gremlins#onInitialize()`. Replies to the sender only with
+`Gremlins v<version> — modules: <list>`. **Zero gameplay impact.**
+
+- **No `.requires(...)`** — deliberately available to all players, not just ops. Don't add
+  a permission level; it is purely informational.
+- Version comes from `FabricLoader.getInstance().getModContainer("gremlins")` →
+  `getMetadata().getVersion().getFriendlyString()`. **Never hardcode it** — the point is
+  that it can't lie about what's actually running.
+- Uses `source.sendSuccess(() -> msg, false)` and never touches `getPlayerOrException()`,
+  so the **server console** can run it too.
+- **Adding a module:** append its display name to the `MODULES` list in that class.
+- Use it to verify a deploy: if `/gremlins` prints the expected version, the jar is loaded
+  server-side and server→client messaging works.
+- Source files are kept **pure ASCII** (the em dash is written as the escape `\u2014`) since javac's
+  default source encoding is platform-dependent.
+
 ## Self-maintenance
 
 When you add or change a capability, module, dependency, command, or architectural

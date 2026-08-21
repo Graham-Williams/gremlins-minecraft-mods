@@ -87,6 +87,22 @@ the glider component / gliding state, not the elytra item).
 
 There is intentionally no recipe to split Wither Wings back into a chestplate + elytra.
 
+## Utility: the `/gremlins` command
+
+Not a gameplay module — a **tracer bullet**. `GremlinsCommand` registers `/gremlins` via
+Fabric's `CommandRegistrationCallback`; it prints
+`Gremlins v<version> — modules: <list>` to whoever ran it and does nothing else.
+
+Design constraints, deliberate:
+
+- **Zero gameplay impact** and **no permission gate** (any player can run it) — it exists
+  only to answer "is the mod actually loaded on the server, and which version?".
+- The version is read at runtime from the mod's own metadata rather than a constant, so a
+  stale jar can never report a version it isn't.
+- Non-player sources (the dedicated-server console) are handled; the command never
+  assumes a player.
+- The module list is a single `List<String>` constant — a new module is one added line.
+
 ## Planned future modules
 
 - **Warden safe-zone** (reward likely **"Warden's Eyes"**): a Warden-gated mod that
