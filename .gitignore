@@ -22,3 +22,5 @@ run/
 # Secrets (defense-in-depth; this repo currently holds none)
 .env
 *.env
+.env.*
+!.env.example
