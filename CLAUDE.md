@@ -59,10 +59,10 @@ vanilla `minecraft:glider` component.
   reads "Netherite Chestplate", or whatever Graham anvil-named the base chestplate; a
   gray italic `minecraft:lore` line marks it as Wither Wings. Do **not** re-add
   `custom_name` — it would clobber his anvil name. A custom *icon* was considered and
-  rejected: it needs a `minecraft:item_model` override, which replaces the whole icon
-  and so drops the armour-trim overlay — replicating trim under a custom icon would
-  mean hand-authoring every trim-material case in the model definition. Naming is the
-  only marker that keeps trim for free.
+  rejected (his call, recorded on issue #5): it needs a `minecraft:item_model`
+  override, which replaces the whole icon definition and so drops the armour-trim
+  overlay. Trim could be replicated under a custom icon — it is 11 trim-material cases
+  in 26.1.2, not impossible — but the lore line is the marker that keeps trim for free.
 - **Only affects items fused AFTER this jar.** Recipe results are baked into the stack
   at craft time, so any Wither Wings crafted before v0.1.1 still carries the old
   `custom_name` and has no lore. Expect this during in-game QA — seeing the old name on

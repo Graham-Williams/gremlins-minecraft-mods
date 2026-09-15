@@ -67,7 +67,8 @@ is a non-issue.
 
 **Why vanilla smithing preserves enchants:** `SmithingTransformRecipe#assemble` calls
 `TransmuteRecipe.createWithOriginalComponents(result, base)`, which builds the output
-as `new ItemStack(resultItem, base.getComponentsPatch())` and *then* applies the
+as `ItemStackTemplate.apply(count, base.getComponentsPatch())` — which constructs
+`new ItemStack(holder, count, basePatch)` and *then* applies the
 result JSON's declared components on top. So the base chestplate's **enchantments,
 damage/durability, custom name and armour trim all carry over**, and the glider
 component + lore + custom-data flag are layered on. No custom `SmithingRecipe` in Java
@@ -97,15 +98,21 @@ a normally-obtained chestplate); and recipe results are baked into the stack at 
 time, so **items fused before v0.1.1 keep their old `custom_name` and have no lore** —
 the change is not retroactive.
 
-**Why not a custom inventory icon.** A bespoke texture was mocked up and rejected. A
+**Why not a custom inventory icon.** Bespoke textures were mocked up and rejected —
+Graham's decision, recorded on issue #5 (2026-09-14). A
 custom icon requires a `minecraft:item_model` override, and that override replaces the
-*entire* icon definition. Inventory trim in 26.1 comes from a `minecraft:select` on
-`minecraft:trim_material` inside `assets/minecraft/items/netherite_chestplate.json`, so
-a custom model *could* keep trim — but only by hand-replicating every trim-material case
-for every pattern, which is far more upkeep than the icon is worth. Trim would still
-render on the worn body model either way. Since trimming this chestplate is something
-Graham actually wants to do, naming is the marker that leaves trim intact for free.
-Seven icon mockups are attached to issue #5 if that trade-off ever stops mattering.
+*entire* icon definition. Inventory trim in 26.1.2 comes from a `minecraft:select` on
+`minecraft:trim_material` inside `assets/minecraft/items/netherite_chestplate.json` —
+**exactly 11 cases, with no per-pattern dimension** — so a custom model *could* keep
+trim, at a cost of 11 hand-authored model JSONs kept in sync with vanilla. Not
+impossible, just not worth it for one item. Trim renders on the worn body model either
+way. The lore line is the marker that keeps trim for free.
+
+Seven icon mockups were built (vanilla baseline, draped wings, shoulder flare, elytra
+tint, corner mark, tint+wings, and a deliberately-busy full-wings upper bound, all
+composited from the real vanilla textures) and are **described in the issue #5 comments
+but not attached** — the review sheet went to Graham directly. Rebuild them from the
+vanilla `netherite_chestplate` + `elytra` item textures if that trade-off ever changes.
 
 ### Durability & flight are native
 
