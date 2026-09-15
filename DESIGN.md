@@ -84,12 +84,28 @@ about.
 The marker is instead a single `minecraft:lore` line — a gray italic "Wither Wings"
 under the real item name. Lore is a plain component, so it costs nothing else.
 
+**`color: "gray"` is load-bearing — do not remove it as redundant.** Vanilla applies
+`ItemLore.LORE_STYLE = Style.EMPTY.withColor(DARK_PURPLE).withItalic(true)` to every
+lore line, and `ComponentUtils.mergeStyles` lets the line's *own* style win field by
+field. With no explicit colour the line renders **dark purple**, not gray. (`italic:
+true` genuinely *is* redundant — `LORE_STYLE` already sets it — and is kept only as
+self-documentation. The two are not equally optional.)
+
+Two consequences worth knowing: component patches overwrite per key rather than merging,
+so the result's lore **replaces** any lore already on the base chestplate (irrelevant for
+a normally-obtained chestplate); and recipe results are baked into the stack at craft
+time, so **items fused before v0.1.1 keep their old `custom_name` and have no lore** —
+the change is not retroactive.
+
 **Why not a custom inventory icon.** A bespoke texture was mocked up and rejected. A
 custom icon requires a `minecraft:item_model` override, and that override replaces the
-*entire* icon — including the armour-trim overlay vanilla composites onto it. Trim would
-still render on the worn body model, but never in the inventory. Since trimming this
-chestplate is something Graham actually wants to do, naming is the only marker that
-leaves trim intact. Revisit only if that trade-off stops mattering.
+*entire* icon definition. Inventory trim in 26.1 comes from a `minecraft:select` on
+`minecraft:trim_material` inside `assets/minecraft/items/netherite_chestplate.json`, so
+a custom model *could* keep trim — but only by hand-replicating every trim-material case
+for every pattern, which is far more upkeep than the icon is worth. Trim would still
+render on the worn body model either way. Since trimming this chestplate is something
+Graham actually wants to do, naming is the marker that leaves trim intact for free.
+Seven icon mockups are attached to issue #5 if that trade-off ever stops mattering.
 
 ### Durability & flight are native
 

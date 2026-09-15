@@ -9,7 +9,7 @@
       "minecraft:glider": {},
       "minecraft:lore": [
         {
-          "translate": "item.gremlins.wither_wings.lore",
+          "translate": "gremlins.wither_wings.lore",
           "fallback": "Wither Wings",
           "color": "gray",
           "italic": true
