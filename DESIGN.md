@@ -62,16 +62,34 @@ is a non-issue.
    - base `minecraft:netherite_chestplate`
    - addition `minecraft:elytra`
    - result: `minecraft:netherite_chestplate` **+ components**
-     `minecraft:glider={}`, `minecraft:custom_name="Wither Wings"`,
+     `minecraft:glider={}`, `minecraft:lore=[…]`,
      `minecraft:custom_data={wither_wings:true}`.
 
 **Why vanilla smithing preserves enchants:** `SmithingTransformRecipe#assemble` calls
 `TransmuteRecipe.createWithOriginalComponents(result, base)`, which builds the output
 as `new ItemStack(resultItem, base.getComponentsPatch())` and *then* applies the
-result JSON's declared components on top. So the base chestplate's **enchantments and
-damage/durability carry over**, and the glider component + custom name + custom-data
-flag are layered on. No custom `SmithingRecipe` in Java was needed. The elytra's own
-enchantments are consumed — expected.
+result JSON's declared components on top. So the base chestplate's **enchantments,
+damage/durability, custom name and armour trim all carry over**, and the glider
+component + lore + custom-data flag are layered on. No custom `SmithingRecipe` in Java
+was needed. The elytra's own enchantments are consumed — expected.
+
+### Naming: lore, not `custom_name` (issue #5)
+
+The result deliberately sets **no `minecraft:custom_name`**. Because the base item's
+component patch is copied first, an absent `custom_name` means the item shows its own
+name — "Netherite Chestplate", or whatever the player anvil-named the base chestplate.
+Re-adding `custom_name` would silently clobber that name, which is what #5 was filed
+about.
+
+The marker is instead a single `minecraft:lore` line — a gray italic "Wither Wings"
+under the real item name. Lore is a plain component, so it costs nothing else.
+
+**Why not a custom inventory icon.** A bespoke texture was mocked up and rejected. A
+custom icon requires a `minecraft:item_model` override, and that override replaces the
+*entire* icon — including the armour-trim overlay vanilla composites onto it. Trim would
+still render on the worn body model, but never in the inventory. Since trimming this
+chestplate is something Graham actually wants to do, naming is the only marker that
+leaves trim intact. Revisit only if that trade-off stops mattering.
 
 ### Durability & flight are native
 

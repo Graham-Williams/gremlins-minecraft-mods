@@ -46,15 +46,21 @@ Install into the Gremlins Modrinth profile: copy `build/libs/gremlins-*.jar` (pl
 
 `gremlins:withers_crown` (Wither drop) + Phantom Membrane → `gremlins:wither_wing_template`
 → smith with a Netherite Chestplate + Elytra → a netherite chestplate carrying the
-vanilla `minecraft:glider` component ("Wither Wings").
+vanilla `minecraft:glider` component.
 
 - **Drop is cheese-proof:** only on a Wither death whose `DamageSource.getEntity()` is a
   `ServerPlayer` (player-credited kill, projectiles included); environmental kills give
   nothing. Implemented via `ServerLivingEntityEvents.AFTER_DEATH`.
 - **Enchants/durability preserved:** vanilla `smithing_transform` copies the base item's
-  component patch, then layers the result JSON's components (glider, custom_name,
+  component patch, then layers the result JSON's components (glider, lore,
   custom_data) on top — so no custom Java recipe is needed. The elytra's enchants are
-  consumed (expected).
+  consumed (expected). **Armour trim carries over too** — it is just another component.
+- **The item keeps its own name** (issue #5). The result sets no `custom_name`, so it
+  reads "Netherite Chestplate", or whatever Graham anvil-named the base chestplate; a
+  gray italic `minecraft:lore` line marks it as Wither Wings. Do **not** re-add
+  `custom_name` — it would clobber his anvil name. A custom *icon* was considered and
+  rejected: it needs a `minecraft:item_model` override, which replaces the whole icon
+  and so drops the armour-trim overlay. Naming is the only marker that keeps trim.
 - **Durability/flight are native** to the glider component — write no durability code.
 - One-way (no un-smithing recipe).
 
