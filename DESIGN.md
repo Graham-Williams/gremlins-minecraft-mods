@@ -62,16 +62,57 @@ is a non-issue.
    - base `minecraft:netherite_chestplate`
    - addition `minecraft:elytra`
    - result: `minecraft:netherite_chestplate` **+ components**
-     `minecraft:glider={}`, `minecraft:custom_name="Wither Wings"`,
+     `minecraft:glider={}`, `minecraft:lore=[…]`,
      `minecraft:custom_data={wither_wings:true}`.
 
 **Why vanilla smithing preserves enchants:** `SmithingTransformRecipe#assemble` calls
 `TransmuteRecipe.createWithOriginalComponents(result, base)`, which builds the output
-as `new ItemStack(resultItem, base.getComponentsPatch())` and *then* applies the
-result JSON's declared components on top. So the base chestplate's **enchantments and
-damage/durability carry over**, and the glider component + custom name + custom-data
-flag are layered on. No custom `SmithingRecipe` in Java was needed. The elytra's own
-enchantments are consumed — expected.
+as `ItemStackTemplate.apply(count, base.getComponentsPatch())` — which constructs
+`new ItemStack(holder, count, basePatch)` and *then* applies the
+result JSON's declared components on top. So the base chestplate's **enchantments,
+damage/durability, custom name and armour trim all carry over**, and the glider
+component + lore + custom-data flag are layered on. No custom `SmithingRecipe` in Java
+was needed. The elytra's own enchantments are consumed — expected.
+
+### Naming: lore, not `custom_name` (issue #5)
+
+The result deliberately sets **no `minecraft:custom_name`**. Because the base item's
+component patch is copied first, an absent `custom_name` means the item shows its own
+name — "Netherite Chestplate", or whatever the player anvil-named the base chestplate.
+Re-adding `custom_name` would silently clobber that name, which is what #5 was filed
+about.
+
+The marker is instead a single `minecraft:lore` line — a gray italic "Wither Wings"
+under the real item name. Lore is a plain component, so it costs nothing else.
+
+**`color: "gray"` is load-bearing — do not remove it as redundant.** Vanilla applies
+`ItemLore.LORE_STYLE = Style.EMPTY.withColor(DARK_PURPLE).withItalic(true)` to every
+lore line, and `ComponentUtils.mergeStyles` lets the line's *own* style win field by
+field. With no explicit colour the line renders **dark purple**, not gray. (`italic:
+true` genuinely *is* redundant — `LORE_STYLE` already sets it — and is kept only as
+self-documentation. The two are not equally optional.)
+
+Two consequences worth knowing: component patches overwrite per key rather than merging,
+so the result's lore **replaces** any lore already on the base chestplate (irrelevant for
+a normally-obtained chestplate); and recipe results are baked into the stack at craft
+time, so **items fused before v0.1.1 keep their old `custom_name` and have no lore** —
+the change is not retroactive.
+
+**Why not a custom inventory icon.** Bespoke textures were mocked up and rejected —
+Graham's decision, recorded on issue #5 (2026-09-14). A
+custom icon requires a `minecraft:item_model` override, and that override replaces the
+*entire* icon definition. Inventory trim in 26.1.2 comes from a `minecraft:select` on
+`minecraft:trim_material` inside `assets/minecraft/items/netherite_chestplate.json` —
+**exactly 11 cases, with no per-pattern dimension** — so a custom model *could* keep
+trim, at a cost of 11 hand-authored model JSONs kept in sync with vanilla. Not
+impossible, just not worth it for one item. Trim renders on the worn body model either
+way. The lore line is the marker that keeps trim for free.
+
+Seven icon mockups were built (vanilla baseline, draped wings, shoulder flare, elytra
+tint, corner mark, tint+wings, and a deliberately-busy full-wings upper bound, all
+composited from the real vanilla textures) and are **described in the issue #5 comments
+but not attached** — the review sheet went to Graham directly. Rebuild them from the
+vanilla `netherite_chestplate` + `elytra` item textures if that trade-off ever changes.
 
 ### Durability & flight are native
 

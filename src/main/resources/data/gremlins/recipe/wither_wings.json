@@ -7,7 +7,14 @@
     "id": "minecraft:netherite_chestplate",
     "components": {
       "minecraft:glider": {},
-      "minecraft:custom_name": "Wither Wings",
+      "minecraft:lore": [
+        {
+          "translate": "gremlins.wither_wings.lore",
+          "fallback": "Wither Wings",
+          "color": "gray",
+          "italic": true
+        }
+      ],
       "minecraft:custom_data": {
         "wither_wings": true
       }

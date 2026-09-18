@@ -23,9 +23,12 @@ Fuse an **Elytra** onto a **Netherite Chestplate** to get netherite-tier protect
    **Wither's Crown**.
 2. **Craft** `Wither's Crown + Phantom Membrane` (shapeless) → a **Wither Wing Template**.
 3. **Smith** `Wither Wing Template` + `Netherite Chestplate` + `Elytra` at a smithing
-   table → **Wither Wings**: a netherite chestplate with the vanilla
-   `minecraft:glider` component. The base chestplate's **enchantments and durability
-   are preserved**; the elytra's enchantments are consumed.
+   table → a netherite chestplate carrying the vanilla `minecraft:glider` component.
+
+The fused chestplate **keeps its own name** — "Netherite Chestplate", or whatever you
+anvil-named the base item — and is marked by a gray italic **Wither Wings** lore line
+underneath. Its **enchantments, durability, anvil name and armour trim are all
+preserved**; the elytra's enchantments are consumed.
 
 Gliding, firework boosting, and durability drain are all **native** vanilla behaviour
 of the `minecraft:glider` component — no custom logic. It is a one-way transform (no
@@ -41,7 +44,7 @@ impact**. Run `/gremlins` and it replies (to you only) with the mod's name, its 
 and the loaded feature modules:
 
 ```
-Gremlins v0.1.0 — modules: Wither Wings
+Gremlins v0.1.1 — modules: Wither Wings
 ```
 
 Seeing that in chat proves three things at once: the jar is actually loaded **on the
