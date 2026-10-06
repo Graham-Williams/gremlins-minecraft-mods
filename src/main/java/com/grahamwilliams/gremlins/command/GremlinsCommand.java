@@ -52,7 +52,7 @@ public final class GremlinsCommand {
         return Command.SINGLE_SUCCESS;
     }
 
-    /** e.g. {@code Gremlins v0.1.1 - modules: Wither Wings} (with colour). */
+    /** {@code Gremlins v<version> \u2014 modules: Wither Wings} (with colour). */
     private static Component buildMessage() {
         String modules = MODULES.isEmpty() ? "none" : String.join(", ", MODULES);
         // Built off an empty root so each sibling carries only its own style

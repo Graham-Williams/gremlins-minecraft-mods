@@ -5,8 +5,8 @@ the "Gremlins" banner. One mod jar, many self-contained features.
 
 - **Platform:** Java / **Fabric** only. This is **not** a Bedrock mod and there is no
   Bedrock support (the required item data components and Fabric APIs are Java-only).
-- **Minecraft:** **26.1.2** (calendar versioning — 26.1.2 is a real release).
-- **Fabric Loader:** 0.19.3 · **Fabric API:** 0.153.0+26.1.2 · **Java:** 25 (required).
+- **Minecraft:** **26.3** (calendar versioning — 26.3 is a real release).
+- **Fabric Loader:** 0.19.5 · **Fabric API:** 0.162.0+26.3 · **Java:** 25 (required).
 
 > Minecraft 26.1+ ships **unobfuscated**, so this mod uses the non-remapping Loom
 > plugin (`net.fabricmc.fabric-loom`) and Mojang's official names throughout. There
@@ -44,7 +44,7 @@ impact**. Run `/gremlins` and it replies (to you only) with the mod's name, its 
 and the loaded feature modules:
 
 ```
-Gremlins v0.1.1 — modules: Wither Wings
+Gremlins v0.2.0 — modules: Wither Wings
 ```
 
 Seeing that in chat proves three things at once: the jar is actually loaded **on the
@@ -62,7 +62,7 @@ feature module, add its display name to the `MODULES` list there (a one-line cha
 
 ## Build
 
-Requires **JDK 25** (MC 26.1.2 enforces it). The build points Gradle at a JDK 25 via
+Requires **JDK 25** (MC 26.3 enforces it). The build points Gradle at a JDK 25 via
 `org.gradle.java.home` in `gradle.properties` — edit that path if your JDK 25 lives
 elsewhere (e.g. `brew install openjdk@25`).
 
@@ -72,6 +72,19 @@ elsewhere (e.g. `brew install openjdk@25`).
 
 The mod jar is produced at `build/libs/gremlins-<version>.jar` (ignore the
 `-sources.jar`).
+
+## Test
+
+`./gradlew build` also runs the mod's game tests: it boots a headless dedicated server
+on the target Minecraft version and checks the items, both recipes, the Wither's Crown
+drop rules and the `/gremlins` command. A failing test fails the build. To run only the
+tests:
+
+```bash
+./gradlew runGameTest
+```
+
+The tests live in `src/gametest/` and are not included in the mod jar.
 
 ## Run a local test client / server
 
@@ -89,7 +102,7 @@ cp build/libs/gremlins-*.jar \
   ~/Library/Application\ Support/ModrinthApp/profiles/<Gremlins profile>/mods/
 ```
 
-You also need **Fabric API** (`fabric-api-0.153.0+26.1.2`) in that mods folder. Launch
+You also need **Fabric API** (`fabric-api-0.162.0+26.3`) in that mods folder. Launch
 the profile from the Modrinth app.
 
 ## License
