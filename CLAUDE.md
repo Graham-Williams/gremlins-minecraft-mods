@@ -65,9 +65,12 @@ test fails**. Per-test results land in `build/gametest/junit.xml`; the run direc
   `fabric.mod.json`, then run `./gradlew build`. A green build means the mod loads and
   behaves on that version; it does not cover the client (icons, tooltip rendering,
   flight feel), which still needs an in-game look.
-- A recipe JSON that fails to parse is **fatal** on 26.3 — the server stops at
-  "Registry loading errors" instead of logging and carrying on — so a bad recipe shows
-  up as the test server failing to start rather than as a failed test.
+- Observed on 26.3 while checking these tests: with an ingredient in
+  `wither_wing_template.json` changed to an item ID that does not exist, the game test
+  server did not start. It logged `Registry loading errors` / `Failed to parse
+  gremlins:wither_wing_template from pack gremlins` and exited with `Failed to load
+  registries due to errors`, so the build failed before any test ran. Other kinds of
+  recipe error, and the regular dedicated server, were not tried.
 - When you add behaviour, add a test for it, and check the test fails when the
   behaviour is broken.
 

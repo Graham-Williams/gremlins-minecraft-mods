@@ -9,6 +9,7 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSource;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -23,6 +24,7 @@ import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.animal.golem.IronGolem;
 import net.minecraft.world.entity.boss.wither.WitherBoss;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.projectile.arrow.Arrow;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -37,6 +39,12 @@ import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.item.crafting.SmithingRecipe;
 import net.minecraft.world.item.crafting.SmithingRecipeInput;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.Enchantments;
+import net.minecraft.world.item.equipment.trim.ArmorTrim;
+import net.minecraft.world.item.equipment.trim.TrimMaterials;
+import net.minecraft.world.item.equipment.trim.TrimPatterns;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.Vec3;
 
@@ -119,12 +127,15 @@ public class GremlinsGameTests {
         ItemLore lore = result.get(DataComponents.LORE);
         helper.assertTrue(lore != null, "smithing result has no minecraft:lore component");
         helper.assertValueEqual(lore.lines().size(), 1, "lore line count");
-        Component line = lore.lines().get(0);
-        helper.assertValueEqual(line.getString(), "Wither Wings", "lore line text");
-        // Gray is load-bearing: without an explicit colour vanilla renders lore dark purple.
+        helper.assertValueEqual(lore.lines().get(0).getString(), "Wither Wings", "lore line text");
+        // styledLines() is what the tooltip renders: the line's own style merged over
+        // vanilla's default lore style. Gray is load-bearing: without an explicit colour
+        // the default (dark purple) wins.
+        Component rendered = lore.styledLines().get(0);
         helper.assertValueEqual(
-                line.getStyle().getColor(),
-                TextColor.fromLegacyFormat(ChatFormatting.GRAY), "lore line colour");
+                rendered.getStyle().getColor(),
+                TextColor.fromLegacyFormat(ChatFormatting.GRAY), "rendered lore line colour");
+        helper.assertTrue(rendered.getStyle().isItalic(), "rendered lore line is not italic");
 
         CustomData data = result.get(DataComponents.CUSTOM_DATA);
         helper.assertTrue(data != null, "smithing result has no minecraft:custom_data component");
@@ -156,6 +167,29 @@ public class GremlinsGameTests {
     }
 
     @GameTest
+    public void smithingRecipePreservesEnchantmentsAndTrim(GameTestHelper helper) {
+        var registries = helper.getLevel().registryAccess();
+        Holder<Enchantment> protection =
+                registries.lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.PROTECTION);
+        ArmorTrim trim = new ArmorTrim(
+                registries.lookupOrThrow(Registries.TRIM_MATERIAL).getOrThrow(TrimMaterials.QUARTZ),
+                registries.lookupOrThrow(Registries.TRIM_PATTERN).getOrThrow(TrimPatterns.SENTRY));
+
+        ItemStack base = new ItemStack(Items.NETHERITE_CHESTPLATE);
+        base.enchant(protection, 4);
+        base.set(DataComponents.TRIM, trim);
+
+        ItemStack result = smith(helper, base);
+
+        helper.assertValueEqual(
+                EnchantmentHelper.getItemEnchantmentLevel(protection, result), 4,
+                "Protection level on the smithing result");
+        helper.assertValueEqual(result.get(DataComponents.TRIM), trim, "armour trim on the smithing result");
+        helper.assertTrue(result.has(DataComponents.GLIDER), "enchanted base lost the glider component");
+        helper.succeed();
+    }
+
+    @GameTest
     public void smithingRecipeRequiresTheTemplate(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         SmithingRecipeInput input = new SmithingRecipeInput(
@@ -177,6 +211,19 @@ public class GremlinsGameTests {
         WitherBoss wither = spawnWither(helper);
         killWith(helper, wither, helper.getLevel().damageSources().playerAttack(player));
         helper.assertValueEqual(crownsNear(helper, wither), 1, "Wither's Crowns dropped by a player kill");
+        helper.succeed();
+    }
+
+    @GameTest
+    public void playerArrowKilledWitherDropsOneCrown(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Player player = helper.makeMockServerPlayer(GameType.SURVIVAL);
+        WitherBoss wither = spawnWither(helper);
+        // The arrow is the direct entity; the player is only the credited owner.
+        Arrow arrow = new Arrow(
+                level, wither.getX(), wither.getY(), wither.getZ(), new ItemStack(Items.ARROW), null);
+        killWith(helper, wither, level.damageSources().arrow(arrow, player));
+        helper.assertValueEqual(crownsNear(helper, wither), 1, "Wither's Crowns dropped by a player's arrow kill");
         helper.succeed();
     }
 
