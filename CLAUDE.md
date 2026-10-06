@@ -8,7 +8,7 @@ Guidance for Claude Code (and any agent) working in this repo.
 **Java / Fabric only. There is NO Bedrock support** (do not claim any). First shipped
 module: **Wither Wings**.
 
-- **MC 26.1.2**, Fabric Loader 0.19.3, Fabric API 0.153.0+26.1.2, **Java 25**.
+- **MC 26.3**, Fabric Loader 0.19.5, Fabric API 0.162.0+26.3, **Java 25**.
 - Base package `com.grahamwilliams.gremlins`; each feature is a sub-package wired up in
   `Gremlins#onInitialize()`.
 
@@ -23,7 +23,10 @@ MC 26.1+ is **unobfuscated**. This repo therefore:
   (`net.minecraft.resources.Identifier`). When in doubt about an API/name, decompile:
   `./gradlew genSources` then read the sources jar under
   `.gradle/loom-cache/minecraftMaven/.../*-sources.jar`, or `javap -classpath` the
-  merged jar at `~/.gradle/caches/fabric-loom/26.1.2/minecraft-merged.jar`.
+  merged jar at `~/.gradle/caches/fabric-loom/26.3/minecraft-merged.jar`.
+- **26.3 gotcha:** the entity type constants moved from `EntityType` to
+  **`net.minecraft.world.entity.EntityTypes`** (`EntityTypes.WITHER`); `EntityType` is
+  now only the type class.
 - Requires **JDK 25**. `gradle.properties` sets `org.gradle.java.home` to the
   brew `openjdk@25` path — update it if your JDK 25 is elsewhere. Do **not** rely on
   the machine default Java. Gradle wrapper is **9.5.0** (Loom 1.17 needs the 9.5 plugin
@@ -33,14 +36,40 @@ MC 26.1+ is **unobfuscated**. This repo therefore:
 ## Build / run / test
 
 ```bash
-./gradlew build       # -> build/libs/gremlins-<version>.jar
+./gradlew build       # -> build/libs/gremlins-<version>.jar (also runs the game tests)
+./gradlew runGameTest # just the game tests: headless server, ~10 s, non-zero exit on failure
 ./gradlew runClient   # dev client with the mod loaded
 ./gradlew runServer   # dev dedicated server (validates datapack recipe JSON at startup)
 ./gradlew genSources  # decompile MC for API inspection
 ```
 
 Install into the Gremlins Modrinth profile: copy `build/libs/gremlins-*.jar` (plus
-`fabric-api-0.153.0+26.1.2`) into that profile's `mods/` folder.
+`fabric-api-0.162.0+26.3`) into that profile's `mods/` folder.
+
+### Game tests
+
+`src/gametest/` is a separate source set and mod (`gremlins-test`, never packaged into
+the mod jar) holding Fabric GameTest API tests, wired up by `fabricApi.configureTests`
+in `build.gradle`. They run on a real headless dedicated server of the target Minecraft
+version, so they check the real registries, datapack recipe loader and command
+dispatcher. Loom hooks `runGameTest` into `check`, so **`./gradlew build` fails when a
+test fails**. Per-test results land in `build/gametest/junit.xml`; the run directory is
+`build/run/gameTest`.
+
+- Covered: both items are registered; the template recipe and the smithing recipe
+  match and assemble (glider, gray lore line, `custom_data`, **no** `custom_name`, base
+  name and damage preserved); a player-credited Wither kill drops exactly one crown and
+  environmental or mob kills drop none; `/gremlins` runs for a source with no
+  permissions and prints the version from `mod_version`.
+- **Porting to a new Minecraft version:** bump `gradle.properties` and
+  `fabric.mod.json`, then run `./gradlew build`. A green build means the mod loads and
+  behaves on that version; it does not cover the client (icons, tooltip rendering,
+  flight feel), which still needs an in-game look.
+- A recipe JSON that fails to parse is **fatal** on 26.3 — the server stops at
+  "Registry loading errors" instead of logging and carrying on — so a bad recipe shows
+  up as the test server failing to start rather than as a failed test.
+- When you add behaviour, add a test for it, and check the test fails when the
+  behaviour is broken.
 
 ## Wither Wings design (summary)
 
@@ -62,7 +91,7 @@ vanilla `minecraft:glider` component.
   rejected (his call, recorded on issue #5): it needs a `minecraft:item_model`
   override, which replaces the whole icon definition and so drops the armour-trim
   overlay. Trim could be replicated under a custom icon — it is 11 trim-material cases
-  in 26.1.2, not impossible — but the lore line is the marker that keeps trim for free.
+  (still 11 in 26.3), not impossible — but the lore line is the marker that keeps trim for free.
 - **Only affects items fused AFTER this jar.** Recipe results are baked into the stack
   at craft time, so any Wither Wings crafted before v0.1.1 still carries the old
   `custom_name` and has no lore. Expect this during in-game QA — seeing the old name on

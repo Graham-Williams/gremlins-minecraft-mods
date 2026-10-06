@@ -21,7 +21,24 @@ Minecraft 26.1 was the **first unobfuscated** release. Consequences for this rep
   runtime for playing; the build needs a full **JDK 25** (`brew install openjdk@25`).
 - Loom **1.17.17**, Gradle **9.5.0** (Loom 1.17 requires the Gradle 9.5 plugin API).
 
-Pinned versions live in `gradle.properties`.
+Pinned versions live in `gradle.properties` (currently Minecraft **26.3**, Fabric
+Loader 0.19.5, Fabric API 0.162.0+26.3).
+
+### Porting 26.1.2 to 26.3 (mod v0.2.0)
+
+Nothing in the mod's own code or data had to change. The smithing and shapeless recipe
+codecs, the `minecraft:glider` / `minecraft:lore` / `minecraft:custom_data` components,
+and the item-definition and model JSON shapes are the same in 26.3, and Loom 1.17.17 and
+Gradle 9.5.0 handle 26.3 as they are. One API move to know about: the entity type
+constants now live in `net.minecraft.world.entity.EntityTypes` rather than `EntityType`.
+
+### Game tests
+
+Behaviour is checked by Fabric GameTest API tests in `src/gametest/` (a separate
+`gremlins-test` mod, not shipped). `./gradlew build` runs them on a headless dedicated
+server of the target version, so a version port is verified by the build rather than by
+hand: item registration, both recipes and the smithing result's components, the crown
+drop rules, and `/gremlins`. Client-side presentation is not covered.
 
 ## Module: Wither Wings
 
@@ -101,8 +118,8 @@ the change is not retroactive.
 **Why not a custom inventory icon.** Bespoke textures were mocked up and rejected —
 Graham's decision, recorded on issue #5 (2026-09-14). A
 custom icon requires a `minecraft:item_model` override, and that override replaces the
-*entire* icon definition. Inventory trim in 26.1.2 comes from a `minecraft:select` on
-`minecraft:trim_material` inside `assets/minecraft/items/netherite_chestplate.json` —
+*entire* icon definition. Inventory trim (checked in 26.1.2 and again in 26.3) comes
+from a `minecraft:select` on `minecraft:trim_material` inside `assets/minecraft/items/netherite_chestplate.json` —
 **exactly 11 cases, with no per-pattern dimension** — so a custom model *could* keep
 trim, at a cost of 11 hand-authored model JSONs kept in sync with vanilla. Not
 impossible, just not worth it for one item. Trim renders on the worn body model either
