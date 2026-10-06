@@ -184,6 +184,7 @@ public class GremlinsGameTests {
         helper.assertValueEqual(
                 EnchantmentHelper.getItemEnchantmentLevel(protection, result), 4,
                 "Protection level on the smithing result");
+        helper.assertTrue(result.has(DataComponents.TRIM), "the base chestplate's armour trim was dropped");
         helper.assertValueEqual(result.get(DataComponents.TRIM), trim, "armour trim on the smithing result");
         helper.assertTrue(result.has(DataComponents.GLIDER), "enchanted base lost the glider component");
         helper.succeed();
