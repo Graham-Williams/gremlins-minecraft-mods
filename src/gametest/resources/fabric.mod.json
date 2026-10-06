@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "gremlins-test",
+  "version": "1.0.0",
+  "name": "Gremlins Game Tests",
+  "description": "Server game tests for the gremlins mod. Never shipped in the mod jar.",
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-gametest": [
+      "com.grahamwilliams.gremlins.test.GremlinsGameTests"
+    ]
+  },
+  "depends": {
+    "gremlins": "*",
+    "fabric-gametest-api-v1": "*"
+  }
+}

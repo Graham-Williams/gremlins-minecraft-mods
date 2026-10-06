@@ -26,6 +26,32 @@ dependencies {
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 }
 
+// Server game tests (src/gametest). `runGameTest` boots a headless dedicated
+// server on the target Minecraft version, runs every @GameTest and exits non-zero
+// on any failure. Loom hooks it into `check`, so `./gradlew build` runs it too.
+// The gametest source set is a separate mod (`gremlins-test`) and is never
+// packaged into the mod jar.
+fabricApi {
+    configureTests {
+        createSourceSet = true
+        modId = "gremlins-test"
+        enableGameTests = true
+        enableClientGameTests = false
+        eula = true
+    }
+}
+
+loom {
+    runs {
+        gameTest {
+            // Independent source of truth for the /gremlins version assertion.
+            property "gremlins.expectedVersion", project.version.toString()
+            // Per-test results, JUnit XML.
+            property "fabric-api.gametest.report-file", layout.buildDirectory.file("gametest/junit.xml").get().asFile.absolutePath
+        }
+    }
+}
+
 processResources {
     inputs.property "version", project.version
     filesMatching("fabric.mod.json") {
