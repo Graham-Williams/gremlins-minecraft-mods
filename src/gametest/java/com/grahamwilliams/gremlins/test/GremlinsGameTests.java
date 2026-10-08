@@ -244,6 +244,8 @@ public class GremlinsGameTests {
 
         Map<String, String> ourCases = selectCases(helper, ours, "gremlins");
         Map<String, String> vanillaCases = selectCases(helper, vanilla, "vanilla");
+        // Guard the loop below: a vanilla select with no cases would pass vacuously.
+        helper.assertFalse(vanillaCases.isEmpty(), "vanilla's icon definition has no trim-material cases");
         // Same cases in vanilla's order, so a diff against vanilla's file stays readable.
         helper.assertValueEqual(
                 List.copyOf(ourCases.keySet()), List.copyOf(vanillaCases.keySet()),
