@@ -12,6 +12,48 @@ the "Gremlins" banner. One mod jar, many self-contained features.
 > plugin (`net.fabricmc.fabric-loom`) and Mojang's official names throughout. There
 > are no Yarn/Mojang mapping downloads — see `DESIGN.md` for the toolchain notes.
 
+## Install
+
+Download the latest `gremlins-<version>.jar` from the
+[Releases page](https://github.com/Graham-Williams/gremlins-minecraft-mods/releases/latest).
+The mod is distributed only through GitHub releases; it is not on Modrinth or CurseForge.
+
+**You need**
+
+- Minecraft **Java Edition 26.3** with **Fabric Loader 0.19.5** or newer.
+- [**Fabric API**](https://modrinth.com/mod/fabric-api) for 26.3.
+- Java 25, which current launchers install for you.
+
+| Gremlins | Minecraft | Fabric Loader |
+|---|---|---|
+| 0.2.0 | 26.3 | 0.19.5+ |
+
+**Single player**
+
+1. Create or open a Fabric 26.3 instance in your launcher.
+2. Add Fabric API if the instance does not have it.
+3. Add the Gremlins jar. In the Modrinth App: open the instance, go to **Content**, click
+   **Upload files** and select the jar. In other launchers, put the jar in the instance's
+   `mods` folder.
+4. Start the game and run `/gremlins` in a world. It replies with the version and the
+   loaded modules.
+
+**Multiplayer**
+
+The mod adds items, so it must be installed on the **server and on every player's
+client**, all on the same version. A player without it, or with a different version, is
+disconnected when joining.
+
+1. Put the Gremlins jar and Fabric API in the server's `mods` folder and restart it.
+2. Every player installs the same jar as in the single-player steps.
+3. Run `/gremlins` on the server console and in game. Both should report the same version.
+
+**Removing the mod**
+
+A fused Wither Wings chestplate is a vanilla netherite chestplate carrying the vanilla
+glider component, so it keeps working without the mod. Wither's Crowns and Wither Wing
+Templates are the mod's own items and disappear from a world opened without it.
+
 ## Modules
 
 ### Wither Wings (shipped)
@@ -92,18 +134,6 @@ The tests live in `src/gametest/` and are not included in the mod jar.
 ./gradlew runClient   # launches a dev Minecraft client with the mod loaded
 ./gradlew runServer   # launches a dev dedicated server (loads recipes at startup)
 ```
-
-## Install into the Gremlins Modrinth profile
-
-Copy the built jar into the profile's mods folder:
-
-```bash
-cp build/libs/gremlins-*.jar \
-  ~/Library/Application\ Support/ModrinthApp/profiles/<Gremlins profile>/mods/
-```
-
-You also need **Fabric API** (`fabric-api-0.162.0+26.3`) in that mods folder. Launch
-the profile from the Modrinth app.
 
 ## License
 
