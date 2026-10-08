@@ -68,7 +68,11 @@ test fails**. Per-test results land in `build/gametest/junit.xml`; the run direc
 - **Porting to a new Minecraft version:** bump `gradle.properties` and
   `fabric.mod.json`, then run `./gradlew build`. A green build means the mod loads and
   behaves on that version; it does not cover the client (icons, tooltip rendering,
-  flight feel), which still needs an in-game look.
+  flight feel), which still needs an in-game look. Quick client check: `./gradlew
+  runClient` to the title screen, then grep `run/logs/latest.log` for `gremlins` with
+  `WARN`. The loader is silent on success; a broken icon model logs `Unable to bake
+  item model: 'gremlins:wither_wings'` and `Missing textures in model gremlins:...`
+  (verified by breaking one on purpose).
 - Observed on 26.3 while checking these tests: with an ingredient in
   `wither_wing_template.json` changed to an item ID that does not exist, the game test
   server did not start. It logged `Registry loading errors` / `Failed to parse
