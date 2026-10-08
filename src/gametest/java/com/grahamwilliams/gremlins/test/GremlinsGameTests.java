@@ -209,9 +209,8 @@ public class GremlinsGameTests {
     public void smithingRecipeSetsTheWitherWingsIcon(GameTestHelper helper) {
         ItemStack result = smith(helper, new ItemStack(Items.NETHERITE_CHESTPLATE));
 
-        helper.assertTrue(
-                result.has(DataComponents.ITEM_MODEL),
-                "smithing result has no minecraft:item_model component");
+        // Every item carries a default item_model equal to its own ID, so has() would
+        // always be true here; only the value proves the recipe set ours.
         helper.assertValueEqual(
                 result.get(DataComponents.ITEM_MODEL), Gremlins.id("wither_wings"),
                 "minecraft:item_model on the smithing result");

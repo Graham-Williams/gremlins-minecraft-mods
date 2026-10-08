@@ -58,9 +58,13 @@ test fails**. Per-test results land in `build/gametest/junit.xml`; the run direc
 
 - Covered: both items are registered; the template recipe and the smithing recipe
   match and assemble (glider, gray lore line, `custom_data`, **no** `custom_name`, base
-  name and damage preserved); a player-credited Wither kill drops exactly one crown and
-  environmental or mob kills drop none; `/gremlins` runs for a source with no
-  permissions and prints the version from `mod_version`.
+  name and damage preserved); the smithing result carries `item_model`
+  `gremlins:wither_wings`, on a plain and on a trimmed base
+  (`smithingRecipeSetsTheWitherWingsIcon`); the icon definition mirrors vanilla's
+  trim-material cases, model by model and sprite by sprite
+  (`iconDefinitionMirrorsVanillaTrimCases`); a player-credited Wither kill drops
+  exactly one crown and environmental or mob kills drop none; `/gremlins` runs for a
+  source with no permissions and prints the version from `mod_version`.
 - **Porting to a new Minecraft version:** bump `gradle.properties` and
   `fabric.mod.json`, then run `./gradlew build`. A green build means the mod loads and
   behaves on that version; it does not cover the client (icons, tooltip rendering,
@@ -90,15 +94,24 @@ vanilla `minecraft:glider` component.
 - **The item keeps its own name** (issue #5). The result sets no `custom_name`, so it
   reads "Netherite Chestplate", or whatever Graham anvil-named the base chestplate; a
   gray italic `minecraft:lore` line marks it as Wither Wings. Do **not** re-add
-  `custom_name` — it would clobber his anvil name. A custom *icon* was considered and
-  rejected (his call, recorded on issue #5): it needs a `minecraft:item_model`
-  override, which replaces the whole icon definition and so drops the armour-trim
-  overlay. Trim could be replicated under a custom icon — it is 11 trim-material cases
-  (still 11 in 26.3), not impossible — but the lore line is the marker that keeps trim for free.
+  `custom_name` — it would clobber his anvil name.
+- **Winged icon, trim kept.** The result carries `minecraft:item_model:
+  gremlins:wither_wings`. That override replaces vanilla's whole icon definition, so
+  `assets/gremlins/items/wither_wings.json` mirrors vanilla's `minecraft:trim_material`
+  select with 11 per-material models (`models/item/wither_wings_<material>_trim.json`;
+  netherite uses the `_darker` sprite, as vanilla does). The texture is wings-only and
+  is layered *under* vanilla's own `minecraft:item/netherite_chestplate` texture, so the
+  repo copies no vanilla art and follows vanilla retextures.
+  `iconDefinitionMirrorsVanillaTrimCases` is the sync check: it fails at a version port
+  when Mojang adds, renames or re-palettes a trim material; the fix is one more case
+  plus one more model. A client without the mod shows the fused item as the
+  missing-model placeholder; it still works. Gotcha: every item has a default
+  `item_model` equal to its own ID, so `has(ITEM_MODEL)` is always true — assert the value.
 - **Only affects items fused AFTER this jar.** Recipe results are baked into the stack
-  at craft time, so any Wither Wings crafted before v0.1.1 still carries the old
-  `custom_name` and has no lore. Expect this during in-game QA — seeing the old name on
-  an old item does NOT mean the change failed; fuse a fresh one to check.
+  at craft time, so Wither Wings crafted before v0.1.1 keep the old `custom_name` and
+  have no lore, and ones fused before v0.3.0 keep the plain chestplate icon. Expect
+  this during in-game QA — an old item looking old does NOT mean the change failed;
+  fuse a fresh one to check.
 - **Durability/flight are native** to the glider component — write no durability code.
 - One-way (no un-smithing recipe).
 
