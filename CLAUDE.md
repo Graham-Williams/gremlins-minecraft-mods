@@ -59,9 +59,9 @@ test fails**. Per-test results land in `build/gametest/junit.xml`; the run direc
 - Covered: both items are registered; the template recipe and the smithing recipe
   match and assemble (glider, gray lore line, `custom_data`, **no** `custom_name`, base
   name and damage preserved); the smithing result carries `item_model`
-  `gremlins:wither_wings`, on a plain and on a trimmed base
-  (`smithingRecipeSetsTheWitherWingsIcon`); the icon definition mirrors vanilla's
-  trim-material cases, model by model and sprite by sprite
+  `gremlins:wither_wings` on a plain base (`smithingRecipeSetsTheWitherWingsIcon`) and
+  on a trimmed base (`smithingRecipePreservesEnchantmentsAndTrim`); the icon definition
+  mirrors vanilla's trim-material cases in order, model by model and sprite by sprite
   (`iconDefinitionMirrorsVanillaTrimCases`); a player-credited Wither kill drops
   exactly one crown and environmental or mob kills drop none; `/gremlins` runs for a
   source with no permissions and prints the version from `mod_version`.
@@ -92,8 +92,8 @@ vanilla `minecraft:glider` component.
   `ServerPlayer` (player-credited kill, projectiles included); environmental kills give
   nothing. Implemented via `ServerLivingEntityEvents.AFTER_DEATH`.
 - **Enchants/durability preserved:** vanilla `smithing_transform` copies the base item's
-  component patch, then layers the result JSON's components (glider, lore,
-  custom_data) on top — so no custom Java recipe is needed. The elytra's enchants are
+  component patch, then layers the result JSON's components (glider, item_model,
+  lore, custom_data) on top — so no custom Java recipe is needed. The elytra's enchants are
   consumed (expected). **Armour trim carries over too** — it is just another component.
 - **The item keeps its own name** (issue #5). The result sets no `custom_name`, so it
   reads "Netherite Chestplate", or whatever Graham anvil-named the base chestplate; a
@@ -108,9 +108,11 @@ vanilla `minecraft:glider` component.
   repo copies no vanilla art and follows vanilla retextures.
   `iconDefinitionMirrorsVanillaTrimCases` is the sync check: it fails at a version port
   when Mojang adds, renames or re-palettes a trim material; the fix is one more case
-  plus one more model. A client without the mod shows the fused item as the
-  missing-model placeholder; it still works. Gotcha: every item has a default
-  `item_model` equal to its own ID, so `has(ITEM_MODEL)` is always true — assert the value.
+  plus one more model. Not tried: a world opened without the mod is expected to draw
+  the fused item with the missing-model placeholder; it would still work. A client
+  without the mod cannot join a server running it at all. Gotcha: every item has a
+  default `item_model` equal to its own ID, so `has(ITEM_MODEL)` is always true —
+  assert the value.
 - **Only affects items fused AFTER this jar.** Recipe results are baked into the stack
   at craft time, so Wither Wings crafted before v0.1.1 keep the old `custom_name` and
   have no lore, and ones fused before v0.3.0 keep the plain chestplate icon. Expect

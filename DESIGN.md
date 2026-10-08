@@ -89,8 +89,9 @@ as `ItemStackTemplate.apply(count, base.getComponentsPatch())` — which constru
 `new ItemStack(holder, count, basePatch)` and *then* applies the
 result JSON's declared components on top. So the base chestplate's **enchantments,
 damage/durability, custom name and armour trim all carry over**, and the glider
-component + lore + custom-data flag are layered on. No custom `SmithingRecipe` in Java
-was needed. The elytra's own enchantments are consumed — expected.
+component, item model, lore and custom-data flag are layered on. No custom
+`SmithingRecipe` in Java was needed. The elytra's own enchantments are consumed —
+expected.
 
 ### Naming: lore, not `custom_name` (issue #5)
 
@@ -150,12 +151,13 @@ a trim material, add one case and one model; when one is renamed or re-paletted,
 rename or re-point it. `iconDefinitionMirrorsVanillaTrimCases` reads both definitions
 off the classpath and fails the build at a version port until that is done, naming
 the case or sprite that differs. Like the lore line, the icon only applies to items
-fused after the jar that introduced it (v0.3.0). A client without the mod renders the
-fused item with the missing-model placeholder; the item still works.
+fused after the jar that introduced it (v0.3.0). Not tried: a world opened without the
+mod is expected to draw the fused item with the missing-model placeholder; it would
+still work. A client without the mod cannot join a server running it at all.
 
 **History.** A custom icon was rejected on issue #5 in September 2026 over the cost of
-replicating the trim cases; Graham reversed that in October 2026 and picked the
-full-wings mockup.
+replicating the trim cases. Reversed in October 2026 (the PR that added this section
+records the pick: the full-wings mockup).
 
 ### Durability & flight are native
 
