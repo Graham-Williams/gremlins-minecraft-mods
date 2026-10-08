@@ -41,10 +41,11 @@ The mod is distributed only through GitHub releases; it is not on Modrinth or Cu
 **Multiplayer**
 
 The mod adds items, so it must be installed on the **server and on every player's
-client**, all on the same version. A player without it, or with a different version, is
-disconnected when joining.
+client**. Keep everyone on the same version. A player whose client lacks the mod, or
+lacks an item the server's version adds, is disconnected when joining.
 
-1. Put the Gremlins jar and Fabric API in the server's `mods` folder and restart it.
+1. On a Fabric 26.3 server running Java 25, put the Gremlins jar and Fabric API in the
+   `mods` folder and restart it.
 2. Every player installs the same jar as in the single-player steps.
 3. Run `/gremlins` on the server console and in game. Both should report the same version.
 
@@ -52,7 +53,8 @@ disconnected when joining.
 
 A fused Wither Wings chestplate is a vanilla netherite chestplate carrying the vanilla
 glider component, so it keeps working without the mod. Wither's Crowns and Wither Wing
-Templates are the mod's own items and disappear from a world opened without it.
+Templates are the mod's own items, so expect them to be lost from a world opened
+without it.
 
 ## Modules
 
