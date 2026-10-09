@@ -1,9 +1,19 @@
 package com.grahamwilliams.gremlins.test;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.grahamwilliams.gremlins.Gremlins;
 import com.grahamwilliams.gremlins.witherwings.WitherWings;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.ChatFormatting;
@@ -187,6 +197,100 @@ public class GremlinsGameTests {
         helper.assertTrue(result.has(DataComponents.TRIM), "the base chestplate's armour trim was dropped");
         helper.assertValueEqual(result.get(DataComponents.TRIM), trim, "armour trim on the smithing result");
         helper.assertTrue(result.has(DataComponents.GLIDER), "enchanted base lost the glider component");
+        // The trimmed case is the one the custom icon has to survive: the icon
+        // definition selects a per-material model from this trim.
+        helper.assertValueEqual(
+                result.get(DataComponents.ITEM_MODEL), Gremlins.id("wither_wings"),
+                "minecraft:item_model on the trimmed smithing result");
+        helper.succeed();
+    }
+
+    @GameTest
+    public void smithingRecipeSetsTheWitherWingsIcon(GameTestHelper helper) {
+        ItemStack result = smith(helper, new ItemStack(Items.NETHERITE_CHESTPLATE));
+
+        // Every item carries a default item_model equal to its own ID, so has() would
+        // always be true here; only the value proves the recipe set ours.
+        helper.assertValueEqual(
+                result.get(DataComponents.ITEM_MODEL), Gremlins.id("wither_wings"),
+                "minecraft:item_model on the smithing result");
+        helper.succeed();
+    }
+
+    // ------------------------------------------------------------ icon assets
+
+    /**
+     * Sync-with-vanilla check for the Wither Wings icon. The icon definition replaces
+     * vanilla's for the netherite chestplate, so to keep armour trim rendering on it the
+     * definition re-declares vanilla's select on {@code minecraft:trim_material}, one
+     * gremlins model per case, in vanilla's order. This test reads both definitions off
+     * the classpath and fails at a version port if Mojang adds, renames, reorders or
+     * re-palettes a trim material, which is the signal to add, rename or re-point the
+     * matching gremlins model.
+     */
+    @GameTest
+    public void iconDefinitionMirrorsVanillaTrimCases(GameTestHelper helper) {
+        JsonObject ours = readJson(helper, "assets/gremlins/items/wither_wings.json")
+                .getAsJsonObject("model");
+        JsonObject vanilla = readJson(helper, "assets/minecraft/items/netherite_chestplate.json")
+                .getAsJsonObject("model");
+        for (JsonObject definition : List.of(ours, vanilla)) {
+            helper.assertValueEqual(
+                    definition.get("type").getAsString(), "minecraft:select", "icon definition type");
+            helper.assertValueEqual(
+                    definition.get("property").getAsString(), "minecraft:trim_material",
+                    "icon definition select property");
+        }
+
+        Map<String, String> ourCases = selectCases(helper, ours, "gremlins");
+        Map<String, String> vanillaCases = selectCases(helper, vanilla, "vanilla");
+        // Guard the loop below: a vanilla select with no cases would pass vacuously.
+        helper.assertFalse(vanillaCases.isEmpty(), "vanilla's icon definition has no trim-material cases");
+        // Same cases in vanilla's order, so a diff against vanilla's file stays readable.
+        helper.assertValueEqual(
+                List.copyOf(ourCases.keySet()), List.copyOf(vanillaCases.keySet()),
+                "trim-material cases, in order (ours vs vanilla)");
+
+        for (Map.Entry<String, String> vanillaCase : vanillaCases.entrySet()) {
+            String when = vanillaCase.getKey();
+            helper.assertTrue(
+                    when.startsWith("minecraft:"), "trim material " + when + " is not in the minecraft namespace");
+            String ourPath = "wither_wings_" + when.substring("minecraft:".length()) + "_trim";
+            helper.assertValueEqual(ourCases.get(when), "gremlins:item/" + ourPath, "model for case " + when);
+            JsonObject ourTextures = modelTextures(helper, "assets/gremlins/models/item/" + ourPath + ".json");
+            assertWingsBaseLayers(helper, ourTextures, ourPath, 3);
+
+            // The trim overlay must be the very sprite vanilla uses for this material
+            // (netherite, for one, uses the "_darker" palette on dark armour).
+            String vanillaModel = vanillaCase.getValue();
+            helper.assertTrue(
+                    vanillaModel.startsWith("minecraft:item/"),
+                    "vanilla case " + when + " points at " + vanillaModel + ", expected a minecraft:item/* model");
+            String vanillaPath = vanillaModel.substring("minecraft:item/".length());
+            JsonObject vanillaTextures =
+                    modelTextures(helper, "assets/minecraft/models/item/" + vanillaPath + ".json");
+            helper.assertTrue(
+                    ourTextures.has("layer2"), ourPath + " has no layer2 (the trim overlay)");
+            helper.assertValueEqual(
+                    ourTextures.get("layer2").getAsString(),
+                    vanillaTextures.get("layer1").getAsString(),
+                    "trim sprite of " + ourPath + " vs vanilla " + vanillaPath);
+        }
+
+        JsonObject fallback = ours.getAsJsonObject("fallback");
+        helper.assertValueEqual(fallback.get("type").getAsString(), "minecraft:model", "fallback model type");
+        helper.assertValueEqual(
+                fallback.get("model").getAsString(), "gremlins:item/wither_wings", "fallback (untrimmed) model");
+        JsonObject fallbackTextures = modelTextures(helper, "assets/gremlins/models/item/wither_wings.json");
+        assertWingsBaseLayers(helper, fallbackTextures, "wither_wings", 2);
+
+        // The wings sprite must be a 16x16 item texture: a PNG's IHDR chunk holds the
+        // width and height as big-endian ints at byte offsets 16 and 20.
+        byte[] png = readResource(helper, "assets/gremlins/textures/item/wither_wings.png");
+        helper.assertTrue(png.length >= 24, "the wings texture is too short to be a PNG");
+        ByteBuffer header = ByteBuffer.wrap(png);
+        helper.assertValueEqual(header.getInt(16), 16, "wings texture width");
+        helper.assertValueEqual(header.getInt(20), 16, "wings texture height");
         helper.succeed();
     }
 
@@ -287,7 +391,7 @@ public class GremlinsGameTests {
         helper.assertValueEqual(output.size(), 1, "messages sent by /gremlins (got " + output + ")");
         helper.assertValueEqual(
                 output.get(0),
-                "Gremlins v" + expectedVersion + " — modules: Wither Wings",
+                "Gremlins v" + expectedVersion + " \u2014 modules: Wither Wings",
                 "/gremlins output");
         helper.succeed();
     }
@@ -296,6 +400,68 @@ public class GremlinsGameTests {
 
     private static ResourceKey<Recipe<?>> recipeKey(String path) {
         return ResourceKey.create(Registries.RECIPE, Gremlins.id(path));
+    }
+
+    /** A classpath resource: the mod's own assets, or vanilla's from the Minecraft jar. */
+    private static InputStream resource(String path) {
+        return GremlinsGameTests.class.getClassLoader().getResourceAsStream(path);
+    }
+
+    private static byte[] readResource(GameTestHelper helper, String path) {
+        try (InputStream in = resource(path)) {
+            helper.assertTrue(in != null, path + " is not on the classpath");
+            return in.readAllBytes();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    private static JsonObject readJson(GameTestHelper helper, String path) {
+        return JsonParser.parseString(new String(readResource(helper, path), StandardCharsets.UTF_8))
+                .getAsJsonObject();
+    }
+
+    /**
+     * The {@code when -> model} pairs of a select definition in file order, asserting
+     * every case is a plain {@code minecraft:model} and no {@code when} repeats.
+     */
+    private static Map<String, String> selectCases(GameTestHelper helper, JsonObject select, String label) {
+        Map<String, String> cases = new LinkedHashMap<>();
+        for (JsonElement element : select.getAsJsonArray("cases")) {
+            JsonObject entry = element.getAsJsonObject();
+            String when = entry.get("when").getAsString();
+            JsonObject model = entry.getAsJsonObject("model");
+            helper.assertValueEqual(
+                    model.get("type").getAsString(), "minecraft:model", label + " model type for case " + when);
+            helper.assertTrue(
+                    cases.put(when, model.get("model").getAsString()) == null,
+                    label + " icon definition lists " + when + " twice");
+        }
+        return cases;
+    }
+
+    private static JsonObject modelTextures(GameTestHelper helper, String path) {
+        JsonObject model = readJson(helper, path);
+        helper.assertValueEqual(
+                model.get("parent").getAsString(), "minecraft:item/generated", "parent of " + path);
+        return model.getAsJsonObject("textures");
+    }
+
+    /**
+     * Every Wither Wings model is the wings sprite with vanilla's chestplate drawn over it,
+     * and exactly {@code expectedLayers} texture keys in all: a stray extra layer would be
+     * drawn on the icon too.
+     */
+    private static void assertWingsBaseLayers(
+            GameTestHelper helper, JsonObject textures, String modelPath, int expectedLayers) {
+        helper.assertValueEqual(
+                textures.size(), expectedLayers,
+                "texture layers in " + modelPath + " (keys " + textures.keySet() + ")");
+        helper.assertValueEqual(
+                textures.get("layer0").getAsString(), "gremlins:item/wither_wings", "layer0 of " + modelPath);
+        helper.assertValueEqual(
+                textures.get("layer1").getAsString(), "minecraft:item/netherite_chestplate",
+                "layer1 of " + modelPath);
     }
 
     /** Runs the real smithing lookup for template + base + elytra and returns the output. */

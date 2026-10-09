@@ -58,13 +58,21 @@ test fails**. Per-test results land in `build/gametest/junit.xml`; the run direc
 
 - Covered: both items are registered; the template recipe and the smithing recipe
   match and assemble (glider, gray lore line, `custom_data`, **no** `custom_name`, base
-  name and damage preserved); a player-credited Wither kill drops exactly one crown and
-  environmental or mob kills drop none; `/gremlins` runs for a source with no
-  permissions and prints the version from `mod_version`.
+  name and damage preserved); the smithing result carries `item_model`
+  `gremlins:wither_wings` on a plain base (`smithingRecipeSetsTheWitherWingsIcon`) and
+  on a trimmed base (`smithingRecipePreservesEnchantmentsAndTrim`); the icon definition
+  mirrors vanilla's trim-material cases in order, model by model and sprite by sprite
+  (`iconDefinitionMirrorsVanillaTrimCases`); a player-credited Wither kill drops
+  exactly one crown and environmental or mob kills drop none; `/gremlins` runs for a
+  source with no permissions and prints the version from `mod_version`.
 - **Porting to a new Minecraft version:** bump `gradle.properties` and
   `fabric.mod.json`, then run `./gradlew build`. A green build means the mod loads and
   behaves on that version; it does not cover the client (icons, tooltip rendering,
-  flight feel), which still needs an in-game look.
+  flight feel), which still needs an in-game look. Quick client check: `./gradlew
+  runClient` to the title screen, then grep `run/logs/latest.log` for `gremlins` with
+  `WARN`. The loader is silent on success; a broken icon model logs `Unable to bake
+  item model: 'gremlins:wither_wings'` and `Missing textures in model gremlins:...`
+  (verified by breaking one on purpose).
 - Observed on 26.3 while checking these tests: with an ingredient in
   `wither_wing_template.json` changed to an item ID that does not exist, the game test
   server did not start. It logged `Registry loading errors` / `Failed to parse
@@ -84,21 +92,32 @@ vanilla `minecraft:glider` component.
   `ServerPlayer` (player-credited kill, projectiles included); environmental kills give
   nothing. Implemented via `ServerLivingEntityEvents.AFTER_DEATH`.
 - **Enchants/durability preserved:** vanilla `smithing_transform` copies the base item's
-  component patch, then layers the result JSON's components (glider, lore,
-  custom_data) on top — so no custom Java recipe is needed. The elytra's enchants are
+  component patch, then layers the result JSON's components (glider, item_model,
+  lore, custom_data) on top — so no custom Java recipe is needed. The elytra's enchants are
   consumed (expected). **Armour trim carries over too** — it is just another component.
 - **The item keeps its own name** (issue #5). The result sets no `custom_name`, so it
   reads "Netherite Chestplate", or whatever Graham anvil-named the base chestplate; a
   gray italic `minecraft:lore` line marks it as Wither Wings. Do **not** re-add
-  `custom_name` — it would clobber his anvil name. A custom *icon* was considered and
-  rejected (his call, recorded on issue #5): it needs a `minecraft:item_model`
-  override, which replaces the whole icon definition and so drops the armour-trim
-  overlay. Trim could be replicated under a custom icon — it is 11 trim-material cases
-  (still 11 in 26.3), not impossible — but the lore line is the marker that keeps trim for free.
+  `custom_name` — it would clobber his anvil name.
+- **Winged icon, trim kept.** The result carries `minecraft:item_model:
+  gremlins:wither_wings`. That override replaces vanilla's whole icon definition, so
+  `assets/gremlins/items/wither_wings.json` mirrors vanilla's `minecraft:trim_material`
+  select with 11 per-material models (`models/item/wither_wings_<material>_trim.json`;
+  netherite uses the `_darker` sprite, as vanilla does). The texture is wings-only and
+  is layered *under* vanilla's own `minecraft:item/netherite_chestplate` texture, so the
+  repo copies no vanilla art and follows vanilla retextures.
+  `iconDefinitionMirrorsVanillaTrimCases` is the sync check: it fails at a version port
+  when Mojang adds, renames or re-palettes a trim material; the fix is one more case
+  plus one more model. Not tried: a world opened without the mod is expected to draw
+  the fused item with the missing-model placeholder; it would still work. A client
+  without the mod cannot join a server running it at all. Gotcha: every item has a
+  default `item_model` equal to its own ID, so `has(ITEM_MODEL)` is always true —
+  assert the value.
 - **Only affects items fused AFTER this jar.** Recipe results are baked into the stack
-  at craft time, so any Wither Wings crafted before v0.1.1 still carries the old
-  `custom_name` and has no lore. Expect this during in-game QA — seeing the old name on
-  an old item does NOT mean the change failed; fuse a fresh one to check.
+  at craft time, so Wither Wings crafted before v0.1.1 keep the old `custom_name` and
+  have no lore, and ones fused before v0.3.0 keep the plain chestplate icon. Expect
+  this during in-game QA — an old item looking old does NOT mean the change failed;
+  fuse a fresh one to check.
 - **Durability/flight are native** to the glider component — write no durability code.
 - One-way (no un-smithing recipe).
 

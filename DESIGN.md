@@ -38,7 +38,8 @@ Behaviour is checked by Fabric GameTest API tests in `src/gametest/` (a separate
 `gremlins-test` mod, not shipped). `./gradlew build` runs them on a headless dedicated
 server of the target version, so a version port is verified by the build rather than by
 hand: item registration, both recipes and the smithing result's components, the crown
-drop rules, and `/gremlins`. Client-side presentation is not covered.
+drop rules, `/gremlins`, and the icon definition's one-to-one match with vanilla's
+trim-material cases. Rendering itself is not covered.
 
 ## Module: Wither Wings
 
@@ -79,8 +80,8 @@ is a non-issue.
    - base `minecraft:netherite_chestplate`
    - addition `minecraft:elytra`
    - result: `minecraft:netherite_chestplate` **+ components**
-     `minecraft:glider={}`, `minecraft:lore=[…]`,
-     `minecraft:custom_data={wither_wings:true}`.
+     `minecraft:glider={}`, `minecraft:item_model=gremlins:wither_wings`,
+     `minecraft:lore=[…]`, `minecraft:custom_data={wither_wings:true}`.
 
 **Why vanilla smithing preserves enchants:** `SmithingTransformRecipe#assemble` calls
 `TransmuteRecipe.createWithOriginalComponents(result, base)`, which builds the output
@@ -88,8 +89,9 @@ as `ItemStackTemplate.apply(count, base.getComponentsPatch())` — which constru
 `new ItemStack(holder, count, basePatch)` and *then* applies the
 result JSON's declared components on top. So the base chestplate's **enchantments,
 damage/durability, custom name and armour trim all carry over**, and the glider
-component + lore + custom-data flag are layered on. No custom `SmithingRecipe` in Java
-was needed. The elytra's own enchantments are consumed — expected.
+component, item model, lore and custom-data flag are layered on. No custom
+`SmithingRecipe` in Java was needed. The elytra's own enchantments are consumed —
+expected.
 
 ### Naming: lore, not `custom_name` (issue #5)
 
@@ -115,21 +117,47 @@ a normally-obtained chestplate); and recipe results are baked into the stack at 
 time, so **items fused before v0.1.1 keep their old `custom_name` and have no lore** —
 the change is not retroactive.
 
-**Why not a custom inventory icon.** Bespoke textures were mocked up and rejected —
-Graham's decision, recorded on issue #5 (2026-09-14). A
-custom icon requires a `minecraft:item_model` override, and that override replaces the
-*entire* icon definition. Inventory trim (checked in 26.1.2 and again in 26.3) comes
-from a `minecraft:select` on `minecraft:trim_material` inside `assets/minecraft/items/netherite_chestplate.json` —
-**exactly 11 cases, with no per-pattern dimension** — so a custom model *could* keep
-trim, at a cost of 11 hand-authored model JSONs kept in sync with vanilla. Not
-impossible, just not worth it for one item. Trim renders on the worn body model either
-way. The lore line is the marker that keeps trim for free.
+### Inventory icon
 
-Seven icon mockups were built (vanilla baseline, draped wings, shoulder flare, elytra
-tint, corner mark, tint+wings, and a deliberately-busy full-wings upper bound, all
-composited from the real vanilla textures) and are **described in the issue #5 comments
-but not attached** — the review sheet went to Graham directly. Rebuild them from the
-vanilla `netherite_chestplate` + `elytra` item textures if that trade-off ever changes.
+The fused chestplate shows a bespoke icon: vanilla's netherite chestplate with elytra
+wings behind it ("full wings"), with armour trim still drawn on top. The recipe result
+sets `minecraft:item_model` to `gremlins:wither_wings`, and
+`assets/gremlins/items/wither_wings.json` is that icon definition.
+
+An `item_model` override replaces vanilla's *entire* icon definition, trim overlay
+included. Vanilla draws inventory trim from a `minecraft:select` on
+`minecraft:trim_material` in `assets/minecraft/items/netherite_chestplate.json` (11
+cases, no per-pattern dimension), so our definition mirrors it case for case, in
+vanilla's order: each case points at `models/item/wither_wings_<material>_trim.json`
+and the fallback at `models/item/wither_wings.json`. Every model is
+`minecraft:item/generated` with `layer0 = gremlins:item/wither_wings`,
+`layer1 = minecraft:item/netherite_chestplate` and, on the trim models, `layer2` set
+to the trim sprite vanilla's own model for that material uses.
+
+**Why wings-only under vanilla's texture.** `textures/item/wither_wings.png` holds
+only the wing pixels and is transparent wherever the chestplate is opaque; vanilla's
+chestplate texture is drawn over it by name. The repo therefore ships no copy of
+vanilla art, and the icon follows a vanilla chestplate retexture or resource pack on
+its own. The trim sprites (`minecraft:trims/items/chestplate_trim_<material>`) are
+generated into the item atlas by vanilla's `atlases/items.json`, so they too are
+referenced, never copied.
+
+**The netherite case.** Vanilla's netherite-trim-on-netherite model uses
+`chestplate_trim_netherite_darker`, not `chestplate_trim_netherite`; ours does the
+same. It is the kind of detail the sync test exists to catch.
+
+**Upkeep contract.** The definition must match vanilla's one to one. When Mojang adds
+a trim material, add one case and one model; when one is renamed or re-paletted,
+rename or re-point it. `iconDefinitionMirrorsVanillaTrimCases` reads both definitions
+off the classpath and fails the build at a version port until that is done, naming
+the case or sprite that differs. Like the lore line, the icon only applies to items
+fused after the jar that introduced it (v0.3.0). Not tried: a world opened without the
+mod is expected to draw the fused item with the missing-model placeholder; it would
+still work. A client without the mod cannot join a server running it at all.
+
+**History.** A custom icon was rejected on issue #5 in September 2026 over the cost of
+replicating the trim cases. Reversed in October 2026 (the PR that added this section
+records the pick: the full-wings mockup).
 
 ### Durability & flight are native
 

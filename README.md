@@ -27,8 +27,10 @@ Fuse an **Elytra** onto a **Netherite Chestplate** to get netherite-tier protect
 
 The fused chestplate **keeps its own name** — "Netherite Chestplate", or whatever you
 anvil-named the base item — and is marked by a gray italic **Wither Wings** lore line
-underneath. Its **enchantments, durability, anvil name and armour trim are all
-preserved**; the elytra's enchantments are consumed.
+underneath. In the inventory it shows a **winged icon** (the netherite chestplate
+with elytra wings behind it), and armour trim still renders on it. Its
+**enchantments, durability, anvil name and armour trim are all preserved**; the
+elytra's enchantments are consumed.
 
 Gliding, firework boosting, and durability drain are all **native** vanilla behaviour
 of the `minecraft:glider` component — no custom logic. It is a one-way transform (no
@@ -44,7 +46,7 @@ impact**. Run `/gremlins` and it replies (to you only) with the mod's name, its 
 and the loaded feature modules:
 
 ```
-Gremlins v0.2.0 — modules: Wither Wings
+Gremlins v0.3.0 — modules: Wither Wings
 ```
 
 Seeing that in chat proves three things at once: the jar is actually loaded **on the
@@ -77,8 +79,9 @@ The mod jar is produced at `build/libs/gremlins-<version>.jar` (ignore the
 
 `./gradlew build` also runs the mod's game tests: it boots a headless dedicated server
 on the target Minecraft version and checks the items, both recipes, the Wither's Crown
-drop rules and the `/gremlins` command. A failing test fails the build. To run only the
-tests:
+drop rules, the `/gremlins` command, and that the winged icon's definition still
+matches vanilla's armour-trim materials. A failing test fails the build. To run only
+the tests:
 
 ```bash
 ./gradlew runGameTest

@@ -7,6 +7,7 @@
     "id": "minecraft:netherite_chestplate",
     "components": {
       "minecraft:glider": {},
+      "minecraft:item_model": "gremlins:wither_wings",
       "minecraft:lore": [
         {
           "translate": "gremlins.wither_wings.lore",
