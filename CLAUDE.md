@@ -43,8 +43,21 @@ MC 26.1+ is **unobfuscated**. This repo therefore:
 ./gradlew genSources  # decompile MC for API inspection
 ```
 
-Install into the Gremlins Modrinth profile: copy `build/libs/gremlins-*.jar` (plus
-`fabric-api-0.162.0+26.3`) into that profile's `mods/` folder.
+### Releases
+
+Players install from GitHub releases; `README.md` links `releases/latest` and carries a
+version table. After a PR that bumps `mod_version` merges:
+
+```bash
+git checkout main && git pull --ff-only
+./gradlew clean build                      # runs the game tests
+gh release create v<version> build/libs/gremlins-<version>.jar \
+  --target main --title "Gremlins <version> (Minecraft <mc>)" --notes "<what changed>"
+```
+
+Attach only the mod jar, never the `-sources` jar. Add the new row to the version table
+in `README.md` in the same PR as the version bump. The mod registers items, so the
+server and every client must move to the new jar together.
 
 ### Game tests
 
