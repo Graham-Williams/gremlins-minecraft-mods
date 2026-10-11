@@ -5,6 +5,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.grahamwilliams.gremlins.Gremlins;
 import com.grahamwilliams.gremlins.witherwings.WitherWings;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -15,6 +17,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import javax.imageio.ImageIO;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSource;
@@ -26,6 +30,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TextColor;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.permissions.PermissionSet;
@@ -52,8 +57,11 @@ import net.minecraft.world.item.crafting.SmithingRecipeInput;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
+import net.minecraft.world.item.equipment.EquipmentAssets;
+import net.minecraft.world.item.equipment.Equippable;
 import net.minecraft.world.item.equipment.trim.ArmorTrim;
 import net.minecraft.world.item.equipment.trim.TrimMaterials;
+import net.minecraft.world.item.equipment.trim.TrimPattern;
 import net.minecraft.world.item.equipment.trim.TrimPatterns;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.Vec3;
@@ -214,6 +222,111 @@ public class GremlinsGameTests {
         helper.assertValueEqual(
                 result.get(DataComponents.ITEM_MODEL), Gremlins.id("wither_wings"),
                 "minecraft:item_model on the smithing result");
+        helper.succeed();
+    }
+
+    @GameTest
+    public void smithingRecipeSetsThePlayerModel(GameTestHelper helper) {
+        ItemStack result = smith(helper, new ItemStack(Items.NETHERITE_CHESTPLATE));
+
+        // The worn look comes from the equippable component's asset_id. Everything else
+        // in the component must stay exactly what a plain netherite chestplate has, so
+        // the whole record is compared: a drifted equip sound or flag fails here.
+        Equippable plain = Items.NETHERITE_CHESTPLATE.components().get(DataComponents.EQUIPPABLE);
+        helper.assertTrue(plain != null, "a plain netherite chestplate has no minecraft:equippable component");
+        Equippable expected = new Equippable(
+                plain.slot(),
+                plain.equipSound(),
+                Optional.of(ResourceKey.create(EquipmentAssets.ROOT_ID, Gremlins.id("wither_wings"))),
+                plain.cameraOverlay(),
+                plain.allowedEntities(),
+                plain.dispensable(),
+                plain.swappable(),
+                plain.damageOnHurt(),
+                plain.equipOnInteract(),
+                plain.canBeSheared(),
+                plain.shearingSound());
+        helper.assertValueEqual(
+                result.get(DataComponents.EQUIPPABLE), expected, "minecraft:equippable on the smithing result");
+        helper.succeed();
+    }
+
+    // ------------------------------------------------------- equipment assets
+
+    /**
+     * The worn model: the netherite chestplate body plus elytra wings, from one equipment
+     * asset. The humanoid layer must be vanilla's netherite texture and the wings layer
+     * vanilla's elytra texture with the player's own elytra/cape skin allowed, nothing
+     * else, and netherite trim must darken exactly as it does on vanilla netherite armour
+     * (the override is copied from vanilla's asset, so compare against the real thing).
+     *
+     * <p>Checked as JSON rather than through {@code EquipmentClientInfo.CODEC}: that class
+     * is client-only and Fabric Loader refuses to load it on the dedicated test server.
+     * The keys asserted here are the codec's field names.
+     */
+    @GameTest
+    public void equipmentAssetHasChestplateAndWings(GameTestHelper helper) {
+        JsonObject ours = readJson(helper, "assets/gremlins/equipment/wither_wings.json");
+        JsonObject vanilla = readJson(helper, "assets/minecraft/equipment/netherite.json");
+
+        JsonObject layers = ours.getAsJsonObject("layers");
+        helper.assertTrue(layers != null, "the wither_wings equipment asset has no layers");
+        helper.assertValueEqual(layers.keySet(), Set.of("humanoid", "wings"), "layer types in the wither_wings equipment asset");
+        helper.assertValueEqual(
+                layers.get("humanoid"),
+                JsonParser.parseString("[{\"texture\": \"minecraft:netherite\"}]"),
+                "humanoid layers");
+        helper.assertValueEqual(
+                layers.get("wings"),
+                JsonParser.parseString("[{\"texture\": \"minecraft:elytra\", \"use_player_texture\": true}]"),
+                "wings layers");
+
+        JsonElement vanillaOverrides = vanilla.get("trim_overrides");
+        helper.assertTrue(
+                vanillaOverrides != null && !vanillaOverrides.getAsJsonArray().isEmpty(),
+                "vanilla's netherite asset has no trim overrides");
+        helper.assertValueEqual(ours.get("trim_overrides"), vanillaOverrides, "trim overrides (ours vs vanilla netherite)");
+        boolean netheriteOverride = false;
+        for (JsonElement override : ours.getAsJsonArray("trim_overrides")) {
+            JsonObject when = override.getAsJsonObject().getAsJsonObject("when");
+            if (when.has("material") && when.get("material").getAsString().equals("minecraft:netherite")) {
+                netheriteOverride = true;
+            }
+        }
+        helper.assertTrue(netheriteOverride, "no trim override for the netherite trim material");
+        helper.succeed();
+    }
+
+    /**
+     * The wings layer gets a trim pass too, and vanilla ships no wings trim textures
+     * (an elytra cannot be trimmed), so a trimmed Wither Wings would draw the missing
+     * texture checker over the wings. The mod fills that gap with a fully transparent
+     * texture per trim pattern; this checks one exists, and is blank, for every pattern
+     * the server actually loaded.
+     */
+    @GameTest
+    public void wingsTrimTexturesCoverEveryVanillaTrimPattern(GameTestHelper helper) {
+        var patterns = helper.getLevel().registryAccess().lookupOrThrow(Registries.TRIM_PATTERN);
+        List<String> seen = new ArrayList<>();
+        for (Holder.Reference<TrimPattern> pattern : patterns.listElements().toList()) {
+            Identifier asset = pattern.value().assetId();
+            String path = "assets/" + asset.getNamespace() + "/textures/trims/entity/wings/" + asset.getPath() + ".png";
+            BufferedImage image;
+            try {
+                image = ImageIO.read(new ByteArrayInputStream(readResource(helper, path)));
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+            helper.assertTrue(image != null, path + " is not a readable PNG");
+            for (int y = 0; y < image.getHeight(); y++) {
+                for (int x = 0; x < image.getWidth(); x++) {
+                    helper.assertValueEqual(
+                            image.getRGB(x, y) >>> 24, 0, "alpha at " + x + "," + y + " of " + path);
+                }
+            }
+            seen.add(pattern.key().identifier().toString());
+        }
+        helper.assertFalse(seen.isEmpty(), "the trim pattern registry is empty, so nothing was checked");
         helper.succeed();
     }
 
