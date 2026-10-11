@@ -38,8 +38,16 @@ Behaviour is checked by Fabric GameTest API tests in `src/gametest/` (a separate
 `gremlins-test` mod, not shipped). `./gradlew build` runs them on a headless dedicated
 server of the target version, so a version port is verified by the build rather than by
 hand: item registration, both recipes and the smithing result's components, the crown
-drop rules, `/gremlins`, and the icon definition's one-to-one match with vanilla's
-trim-material cases. Rendering itself is not covered.
+drop rules, `/gremlins`, the icon definition's one-to-one match with vanilla's
+trim-material cases, and the worn model's equipment asset (its layers and trim
+overrides, and a blank wings trim texture per loaded trim pattern). Rendering itself
+is not covered: the tests check the data the renderer reads, not pixels.
+
+Client-only classes cannot be used from these tests: Fabric Loader strips
+`@Environment(CLIENT)` classes from the dedicated server in dev and refuses to load
+them (`Cannot load class net.minecraft.client.… in environment type SERVER`). That
+is why the equipment asset is asserted as JSON rather than through
+`EquipmentClientInfo.CODEC`; the keys asserted are the codec's field names.
 
 ## Module: Wither Wings
 
@@ -81,6 +89,7 @@ is a non-issue.
    - addition `minecraft:elytra`
    - result: `minecraft:netherite_chestplate` **+ components**
      `minecraft:glider={}`, `minecraft:item_model=gremlins:wither_wings`,
+     `minecraft:equippable={… asset_id=gremlins:wither_wings}`,
      `minecraft:lore=[…]`, `minecraft:custom_data={wither_wings:true}`.
 
 **Why vanilla smithing preserves enchants:** `SmithingTransformRecipe#assemble` calls
@@ -158,6 +167,73 @@ still work. A client without the mod cannot join a server running it at all.
 **History.** A custom icon was rejected on issue #5 in September 2026 over the cost of
 replicating the trim cases. Reversed in October 2026 (the PR that added this section
 records the pick: the full-wings mockup).
+
+### Worn look: chestplate plus wings (v0.4.0)
+
+On the player (and an armour stand) the fused item renders as the netherite
+chestplate **with elytra wings on the back**. No client code: it uses vanilla's
+equipment-asset system (1.21.2+).
+
+**Mechanism.** The `minecraft:equippable` component's `asset_id` names a file
+`assets/<ns>/equipment/<id>.json` whose `layers` map holds one texture list per
+layer type. The recipe result sets `equippable` to exactly what a plain netherite
+chestplate has (`Item.Properties#humanoidArmor`: slot `chest`, equip sound
+`minecraft:item.armor.equip_netherite`, builder defaults for the flags and the
+`item.shears.snip` shearing sound) with `asset_id` swapped to
+`gremlins:wither_wings`. The recipe writes every field out explicitly, including the
+ones equal to the codec defaults, so the file documents the intent; the two
+`Optional` fields (`camera_overlay`, `allowed_entities`) are absent because absent is
+their only "empty" spelling. `smithingRecipeSetsThePlayerModel` compares the whole
+record against the real chestplate's, so a drifted sound or flag fails the build.
+
+`assets/gremlins/equipment/wither_wings.json` has two layers and vanilla's trim
+override:
+
+- `humanoid`: `minecraft:netherite`. `HumanoidArmorLayer` draws it on the body model,
+  exactly as vanilla netherite's own asset does.
+- `wings`: `minecraft:elytra` with `use_player_texture: true`. `WingsLayer` draws the
+  elytra model for **any** chest item whose asset has a `wings` layer (it checks only
+  that `assetId` is present), and `use_player_texture` substitutes the player's own
+  elytra or cape skin, as a real elytra does.
+- `trim_overrides`: copied verbatim from vanilla's `netherite.json`
+  (`minecraft:trim/netherite_darker` when the trim material is netherite). An
+  `asset_id` override replaces vanilla's whole asset, overrides included, so the
+  darker netherite-on-netherite palette would otherwise be lost.
+  `equipmentAssetHasChestplateAndWings` compares the block against vanilla's at build
+  time, so a vanilla change to it shows up at a version port.
+
+No other layers. `humanoid_leggings`, `horse_body` and `nautilus_body` are for slots
+and mobs this item never fills, and `humanoid_baby` is deliberately left out: the
+renderer skips an absent layer type silently (`EquipmentLayerRenderer` returns on an
+empty list, no warning), players are never babies, and `HumanoidArmorLayer` uses the
+adult layer for armour stands. The one visible consequence is that a baby zombie
+wearing a stray pair shows no chestplate.
+
+**Gotcha: trim on the wings.** `EquipmentLayerRenderer` applies the trim pass to every
+layer type except `humanoid_baby`, the wings included, reading
+`textures/trims/entity/wings/<pattern>.png`. Vanilla ships no such textures (an elytra
+cannot be trimmed), and `PalettedTextureManager` answers a missing base texture with
+the missing-texture sprite and a logged error, which would paint the magenta checker
+over the wings of any trimmed pair. The mod therefore ships a fully transparent
+64x32 PNG per vanilla trim pattern under
+`assets/minecraft/textures/trims/entity/wings/`. These add files vanilla lacks and
+override nothing. `wingsTrimTexturesCoverEveryVanillaTrimPattern` walks the server's
+trim-pattern registry and checks each has a fully transparent texture, so a new
+vanilla pattern fails the build until its blank is added (one generated 87-byte
+file). A trim pattern from another mod still hits the missing texture; acceptable.
+This was reasoned from the 26.3 source, not observed in game, so the first in-game
+QA should include a trimmed pair.
+
+**Other things to know.**
+
+- A missing or misnamed equipment asset is silent: `EquipmentAssetManager` returns an
+  empty `MISSING` info and nothing renders. A malformed one logs `Couldn't parse data
+  file` during the client's resource reload. The title-screen smoke check catches the
+  second, not the first; the game test catches both for our own file.
+- The `wings` layer draws 0.125 blocks behind the body, so the wings sit behind the
+  chestplate rather than through it, as on a vanilla elytra.
+- Like the lore and the icon, the worn look is baked in at craft time: pairs fused
+  before v0.4.0 still wear as a plain chestplate.
 
 ### Durability & flight are native
 
