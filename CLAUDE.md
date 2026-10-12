@@ -62,13 +62,20 @@ test fails**. Per-test results land in `build/gametest/junit.xml`; the run direc
   `gremlins:wither_wings` on a plain base (`smithingRecipeSetsTheWitherWingsIcon`) and
   on a trimmed base (`smithingRecipePreservesEnchantmentsAndTrim`); the icon definition
   mirrors vanilla's trim-material cases in order, model by model and sprite by sprite
-  (`iconDefinitionMirrorsVanillaTrimCases`); a player-credited Wither kill drops
+  (`iconDefinitionMirrorsVanillaTrimCases`); the smithing result's `equippable`
+  component equals a plain netherite chestplate's with only `asset_id` changed
+  (`smithingRecipeSetsThePlayerModel`); the equipment asset has exactly the
+  `humanoid` (netherite) and `wings` (elytra, player texture allowed) layers and
+  vanilla netherite's `trim_overrides` (`equipmentAssetHasChestplateAndWings`); a blank
+  wings trim texture exists for every loaded trim pattern
+  (`wingsTrimTexturesCoverEveryVanillaTrimPattern`); a player-credited Wither kill drops
   exactly one crown and environmental or mob kills drop none; `/gremlins` runs for a
   source with no permissions and prints the version from `mod_version`.
 - **Porting to a new Minecraft version:** bump `gradle.properties` and
   `fabric.mod.json`, then run `./gradlew build`. A green build means the mod loads and
   behaves on that version; it does not cover the client (icons, tooltip rendering,
-  flight feel), which still needs an in-game look. Quick client check: `./gradlew
+  the worn chestplate-plus-wings model, flight feel), which still needs an in-game
+  look. Quick client check: `./gradlew
   runClient` to the title screen, then grep `run/logs/latest.log` for `gremlins` with
   `WARN`. The loader is silent on success; a broken icon model logs `Unable to bake
   item model: 'gremlins:wither_wings'` and `Missing textures in model gremlins:...`
@@ -113,11 +120,27 @@ vanilla `minecraft:glider` component.
   without the mod cannot join a server running it at all. Gotcha: every item has a
   default `item_model` equal to its own ID, so `has(ITEM_MODEL)` is always true —
   assert the value.
+- **Worn look: chestplate plus wings.** The result's `minecraft:equippable` is a
+  plain netherite chestplate's with `asset_id` set to `gremlins:wither_wings`, and
+  `assets/gremlins/equipment/wither_wings.json` is that equipment asset: a `humanoid`
+  layer (`minecraft:netherite`, the vanilla chestplate on the body) and a `wings`
+  layer (`minecraft:elytra` with `use_player_texture`, so a player's own elytra/cape
+  skin shows, as on a real elytra). Vanilla's `WingsLayer` draws wings for any chest
+  item whose asset has a `wings` layer, so no client code is needed. **Trim darkening
+  on the worn item now comes from the asset's `trim_overrides`** (copied from vanilla
+  netherite's; the asset replaces vanilla's whole, overrides included). Gotcha: the
+  wings layer gets a trim pass too and vanilla has no `trims/entity/wings/*` textures,
+  so the mod ships a fully transparent one per vanilla trim pattern under
+  `assets/minecraft/textures/trims/entity/wings/`; without them a trimmed pair draws
+  the missing-texture checker on the wings. The asset is only sent through vanilla's
+  resource system: a missing asset renders nothing and logs nothing, a malformed one
+  logs a `Couldn't parse data file` error at resource load.
 - **Only affects items fused AFTER this jar.** Recipe results are baked into the stack
   at craft time, so Wither Wings crafted before v0.1.1 keep the old `custom_name` and
-  have no lore, and ones fused before v0.3.0 keep the plain chestplate icon. Expect
-  this during in-game QA — an old item looking old does NOT mean the change failed;
-  fuse a fresh one to check.
+  have no lore, ones fused before v0.3.0 keep the plain chestplate icon, and ones fused
+  before v0.4.0 still wear as a plain chestplate with no wings. Expect this during
+  in-game QA — an old item looking old does NOT mean the change failed; fuse a fresh
+  one to check.
 - **Durability/flight are native** to the glider component — write no durability code.
 - One-way (no un-smithing recipe).
 

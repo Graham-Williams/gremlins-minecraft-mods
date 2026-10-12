@@ -1,0 +1,23 @@
+{
+  "layers": {
+    "humanoid": [
+      {
+        "texture": "minecraft:netherite"
+      }
+    ],
+    "wings": [
+      {
+        "texture": "minecraft:elytra",
+        "use_player_texture": true
+      }
+    ]
+  },
+  "trim_overrides": [
+    {
+      "palette": "minecraft:trim/netherite_darker",
+      "when": {
+        "material": "minecraft:netherite"
+      }
+    }
+  ]
+}
